@@ -82,6 +82,11 @@ Window {
                 font.pixelSize: 14
             }
         }
+
+        ControlBar {
+            id: controlBar
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 32 }
+        }
     }
 
     ResizeGrips {}
