@@ -20,6 +20,9 @@ class Theme:
     track_bg: str
     divider: str
     chip_bg: str
+    scrim_top: str
+    scrim_bottom: str
+    idle_track: str
 
 
 DARK = Theme(
@@ -36,6 +39,9 @@ DARK = Theme(
     track_bg="rgba(255,255,255,.18)",
     divider="rgba(255,255,255,.12)",
     chip_bg="rgba(255,255,255,.07)",
+    scrim_top="rgba(0,0,0,.40)",
+    scrim_bottom="rgba(6,6,10,.55)",
+    idle_track="rgba(255,255,255,.14)",
 )
 
 LIGHT = Theme(
@@ -52,6 +58,9 @@ LIGHT = Theme(
     track_bg="rgba(0,0,0,.13)",
     divider="rgba(0,0,0,.10)",
     chip_bg="rgba(0,0,0,.045)",
+    scrim_top="rgba(0,0,0,.08)",
+    scrim_bottom="rgba(255,255,255,.55)",
+    idle_track="rgba(0,0,0,.12)",
 )
 
 ACCENTS: dict[str, str] = {
