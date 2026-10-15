@@ -3,9 +3,13 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import "Icons.js" as Icons
 
-// Floating glass bar: transport, seek, volume.
+// Floating glass bar: transport, seek, volume, view toggles.
 Rectangle {
     id: bar
+
+    property bool fullscreen: false
+
+    signal fullscreenToggled()
 
     readonly property bool hovered: hover.hovered
     readonly property color accent: theme.accent
@@ -20,6 +24,12 @@ Rectangle {
         Layout.preferredWidth: 1
         Layout.preferredHeight: 26
         color: theme.divider
+    }
+
+    component ToggleButton: IconButton {
+        Layout.preferredWidth: 40
+        Layout.preferredHeight: 40
+        radius: 12
     }
 
     component Clock: UiText {
@@ -136,6 +146,14 @@ Rectangle {
                 value: player.muted ? 0 : player.volume
                 onMoved: value => player.volume = value
             }
+        }
+
+        Divider {}
+
+        ToggleButton {
+            glyph: bar.fullscreen ? Icons.exitFullscreen : Icons.fullscreen
+            label: bar.fullscreen ? "Exit fullscreen" : "Enter fullscreen"
+            onClicked: bar.fullscreenToggled()
         }
     }
 }
