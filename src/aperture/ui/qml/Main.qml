@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Dialogs
 import QtQuick.Window
 import QtMultimedia
+import "Icons.js" as Icons
 
 Window {
     id: root
@@ -76,6 +77,11 @@ Window {
     }
 
     Shortcut {
+        sequences: [StandardKey.Open]
+        onActivated: root.chooseFiles(false)
+    }
+
+    Shortcut {
         sequence: "Escape"
         enabled: root.fullscreen
         onActivated: root.toggleFullscreen()
@@ -105,6 +111,59 @@ Window {
                 onTapped: root.wake()
                 onSingleTapped: player.togglePlay()
                 onDoubleTapped: root.toggleFullscreen()
+            }
+        }
+
+        Column {
+            id: emptyState
+            anchors.centerIn: parent
+            spacing: 14
+            visible: !player.hasMedia
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: openContent.implicitWidth + 44
+                height: 44
+                radius: 22
+                color: theme.accent
+
+                Accessible.role: Accessible.Button
+                Accessible.name: "Open video"
+                Accessible.onPressAction: root.chooseFiles(false)
+
+                Row {
+                    id: openContent
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    Icon {
+                        anchors.verticalCenter: parent.verticalCenter
+                        size: 16
+                        glyph: Icons.add
+                        color: "white"
+                    }
+
+                    UiText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Open video"
+                        font.pixelSize: 14
+                        font.weight: Font.DemiBold
+                        color: "white"
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.chooseFiles(false)
+                }
+            }
+
+            UiText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "MP4, MKV, AVI, MOV, WebM and more · Ctrl+O"
+                font.pixelSize: 12
+                color: theme.text_tertiary
             }
         }
 
