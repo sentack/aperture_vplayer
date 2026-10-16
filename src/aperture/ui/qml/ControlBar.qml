@@ -8,8 +8,10 @@ Rectangle {
     id: bar
 
     property bool fullscreen: false
+    property bool playlistOpen: false
 
     signal fullscreenToggled()
+    signal playlistToggled()
 
     readonly property bool hovered: hover.hovered
     readonly property color accent: theme.accent
@@ -149,6 +151,13 @@ Rectangle {
         }
 
         Divider {}
+
+        ToggleButton {
+            glyph: Icons.playlist
+            label: bar.playlistOpen ? "Hide playlist" : "Show playlist"
+            color: bar.playlistOpen || hovered ? theme.chip_bg : "transparent"
+            onClicked: bar.playlistToggled()
+        }
 
         ToggleButton {
             glyph: bar.fullscreen ? Icons.exitFullscreen : Icons.fullscreen

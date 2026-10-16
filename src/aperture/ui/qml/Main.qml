@@ -1,4 +1,6 @@
+import QtCore
 import QtQuick
+import QtQuick.Dialogs
 import QtQuick.Window
 import QtMultimedia
 
@@ -11,11 +13,18 @@ Window {
 
     // Chrome fades out after a still pointer during playback; any movement brings it back.
     property bool idle: false
-    readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered
+    readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered || playlistOpen
     property real chromeOpacity: chromeVisible ? 1 : 0
     Behavior on chromeOpacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
     property int restoreVisibility: Window.Windowed
+    property bool playlistOpen: false
+
+    // append=false replaces the queue and plays; append=true adds to the end.
+    function chooseFiles(append) {
+        fileDialog.append = append
+        fileDialog.open()
+    }
 
     function wake() {
         idle = false
@@ -52,6 +61,18 @@ Window {
     Connections {
         target: player
         function onPlayingChanged() { root.wake() }
+    }
+
+    FileDialog {
+        id: fileDialog
+
+        property bool append: false
+
+        title: append ? "Add to playlist" : "Open video"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: player.nameFilters
+        currentFolder: StandardPaths.writableLocation(StandardPaths.MoviesLocation)
+        onAccepted: append ? player.addUrls(selectedFiles) : player.openUrls(selectedFiles)
     }
 
     Shortcut {
@@ -151,9 +172,17 @@ Window {
             id: controlBar
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 32 }
             fullscreen: root.fullscreen
+            playlistOpen: root.playlistOpen
             opacity: root.chromeOpacity
             enabled: root.chromeVisible
             onFullscreenToggled: root.toggleFullscreen()
+            onPlaylistToggled: root.playlistOpen = !root.playlistOpen
+        }
+
+        PlaylistPanel {
+            anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
+            visible: root.playlistOpen
+            onAddRequested: root.chooseFiles(true)
         }
     }
 

@@ -15,6 +15,10 @@ var muted = { stroke: "M16.5 9.5l5 5M21.5 9.5l-5 5", fill: "M4 9v6h4l5 4V5L8 9H4
 var fullscreen = { stroke: "M9 4H5a1 1 0 0 0-1 1v4M15 4h4a1 1 0 0 1 1 1v4M9 20H5a1 1 0 0 1-1-1v-4M15 20h4a1 1 0 0 0 1-1v-4" }
 var exitFullscreen = { stroke: "M4 9h4a1 1 0 0 0 1-1V4M20 9h-4a1 1 0 0 1-1-1V4M4 15h4a1 1 0 0 1 1 1v4M20 15h-4a1 1 0 0 0-1 1v4" }
 
+var playlist = { stroke: "M9.5 7H20M9.5 12H20M9.5 17H20", fill: "M3.6 7a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0ZM3.6 12a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0ZM3.6 17a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0Z" }
+var add = { stroke: "M12 5v14M5 12h14" }
+var trash = { stroke: "M5 7h14M10 7V5h4v2M7 7l.8 11.2a1.5 1.5 0 0 0 1.5 1.3h5.4a1.5 1.5 0 0 0 1.5-1.3L17 7" }
+
 var minimize = { stroke: "M5.25 12h13.5" }
 var maximize = { stroke: "M7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9A2.25 2.25 0 0 1 7.5 5.25Z" }
 var close = { stroke: "M5.25 5.25l13.5 13.5M18.75 5.25l-13.5 13.5" }
