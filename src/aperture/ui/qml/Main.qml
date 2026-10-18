@@ -76,15 +76,15 @@ Window {
         onAccepted: append ? player.addUrls(selectedFiles) : player.openUrls(selectedFiles)
     }
 
-    Shortcut {
-        sequences: [StandardKey.Open]
-        onActivated: root.chooseFiles(false)
+    KeyBindings {
+        fullscreen: root.fullscreen
+        onFullscreenToggled: root.toggleFullscreen()
+        onOpenRequested: root.chooseFiles(false)
     }
 
-    Shortcut {
-        sequence: "Escape"
-        enabled: root.fullscreen
-        onActivated: root.toggleFullscreen()
+    Connections {
+        target: player
+        function onNoticed(text) { toast.show(text) }
     }
 
     Item {
@@ -243,6 +243,12 @@ Window {
             visible: root.playlistOpen
             onAddRequested: root.chooseFiles(true)
         }
+    }
+
+    Toast {
+        id: toast
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 84
     }
 
     ResizeGrips {}

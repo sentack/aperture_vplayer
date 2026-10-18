@@ -23,6 +23,7 @@ class Theme:
     scrim_top: str
     scrim_bottom: str
     idle_track: str
+    popover_bg: str
 
 
 DARK = Theme(
@@ -42,6 +43,7 @@ DARK = Theme(
     scrim_top="rgba(0,0,0,.40)",
     scrim_bottom="rgba(6,6,10,.55)",
     idle_track="rgba(255,255,255,.14)",
+    popover_bg="rgba(30,31,38,.94)",
 )
 
 LIGHT = Theme(
@@ -61,6 +63,7 @@ LIGHT = Theme(
     scrim_top="rgba(0,0,0,.08)",
     scrim_bottom="rgba(255,255,255,.55)",
     idle_track="rgba(0,0,0,.12)",
+    popover_bg="rgba(255,255,255,.96)",
 )
 
 ACCENTS: dict[str, str] = {
