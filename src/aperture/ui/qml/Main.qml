@@ -14,7 +14,7 @@ Window {
 
     // Chrome fades out after a still pointer during playback; any movement brings it back.
     property bool idle: false
-    readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered || playlistOpen
+    readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered || controlBar.menuOpen || playlistOpen
     property real chromeOpacity: chromeVisible ? 1 : 0
     Behavior on chromeOpacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 

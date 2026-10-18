@@ -19,6 +19,8 @@ var playlist = { stroke: "M9.5 7H20M9.5 12H20M9.5 17H20", fill: "M3.6 7a1.4 1.4 
 var add = { stroke: "M12 5v14M5 12h14" }
 var trash = { stroke: "M5 7h14M10 7V5h4v2M7 7l.8 11.2a1.5 1.5 0 0 0 1.5 1.3h5.4a1.5 1.5 0 0 0 1.5-1.3L17 7" }
 
+var settings = { stroke: "M4 7h7.7M16.3 7H20M4 17h1.7M10.3 17H20M11.7 7a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0ZM5.7 17a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0Z" }
+
 var minimize = { stroke: "M5.25 12h13.5" }
 var maximize = { stroke: "M7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9A2.25 2.25 0 0 1 7.5 5.25Z" }
 var close = { stroke: "M5.25 5.25l13.5 13.5M18.75 5.25l-13.5 13.5" }

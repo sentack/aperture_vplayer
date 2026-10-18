@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic as T
 import QtQuick.Effects
 import QtQuick.Layouts
 import "Icons.js" as Icons
@@ -14,6 +15,7 @@ Rectangle {
     signal playlistToggled()
 
     readonly property bool hovered: hover.hovered
+    readonly property bool menuOpen: speedMenu.visible
     readonly property color accent: theme.accent
 
     implicitHeight: 88
@@ -163,6 +165,54 @@ Rectangle {
             glyph: bar.fullscreen ? Icons.exitFullscreen : Icons.fullscreen
             label: bar.fullscreen ? "Exit fullscreen" : "Enter fullscreen"
             onClicked: bar.fullscreenToggled()
+        }
+
+        Rectangle {
+            id: optionsChip
+            Layout.preferredWidth: chipContent.implicitWidth + 20
+            Layout.preferredHeight: 40
+            radius: 16
+            color: chipArea.containsMouse || speedMenu.visible ? theme.track_bg : theme.chip_bg
+
+            Accessible.role: Accessible.ButtonMenu
+            Accessible.name: `Playback speed ${player.rateLabel}`
+            Accessible.onPressAction: speedMenu.visible ? speedMenu.close() : speedMenu.open()
+
+            Row {
+                id: chipContent
+                anchors.centerIn: parent
+                spacing: 6
+
+                Icon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    size: 18
+                    glyph: Icons.settings
+                    color: chipArea.containsMouse ? theme.text_primary : theme.text_secondary
+                }
+
+                Clock {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 34
+                    text: player.rateLabel
+                    font.weight: Font.DemiBold
+                    color: player.rate === 1 ? theme.text_secondary : theme.text_primary
+                }
+            }
+
+            MouseArea {
+                id: chipArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: speedMenu.visible ? speedMenu.close() : speedMenu.open()
+            }
+
+            SpeedMenu {
+                id: speedMenu
+                x: optionsChip.width - width
+                y: -height - 14
+                closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutsideParent
+            }
         }
     }
 }
