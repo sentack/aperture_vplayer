@@ -9,17 +9,20 @@ QML_DIR = Path(__file__).parent / "ui" / "qml"
 
 
 def run(argv: list[str] | None = None) -> int:
-    from PySide6.QtCore import QUrl
+    from PySide6.QtCore import QStandardPaths, QUrl
     from PySide6.QtGui import QGuiApplication
     from PySide6.QtQml import QQmlApplicationEngine
 
+    from aperture.core import History
     from aperture.player import PlayerController
     from aperture.theme import ACCENTS, DARK, DEFAULT_ACCENT, qml_palette
 
     app = QGuiApplication(sys.argv if argv is None else argv)
     app.setApplicationName("Aperture")
 
-    player = PlayerController(app)
+    data_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
+    player = PlayerController(History(Path(data_dir) / "history.json"), app)
+    app.aboutToQuit.connect(player.shutdown)
     engine = QQmlApplicationEngine()
     context = engine.rootContext()
     context.setContextProperty("player", player)
