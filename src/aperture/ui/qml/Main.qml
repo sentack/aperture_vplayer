@@ -238,6 +238,12 @@ Window {
             onPlaylistToggled: root.playlistOpen = !root.playlistOpen
         }
 
+        DropZone {
+            anchors.fill: parent
+            hint: "Drop to play"
+            onUrlsDropped: urls => player.openUrls(urls)
+        }
+
         PlaylistPanel {
             anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
             visible: root.playlistOpen
