@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import json
-import logging
-import os
-import tempfile
 from pathlib import Path
 
-log = logging.getLogger(__name__)
+from aperture.core.storage import read_json, write_json
 
 RECENT_LIMIT = 10
 RESUME_LIMIT = 200
@@ -79,29 +75,10 @@ class History:
     def save(self) -> None:
         if self._path is None:
             return
-        data = {"version": 1, "recent": self._recent, "resume": self._resume}
-        try:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
-            fd, tmp = tempfile.mkstemp(dir=self._path.parent, prefix=".history-", suffix=".json")
-        except OSError:
-            log.warning("could not save history to %s", self._path, exc_info=True)
-            return
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False)
-            os.replace(tmp, self._path)
-        except OSError:
-            log.warning("could not save history to %s", self._path, exc_info=True)
-            Path(tmp).unlink(missing_ok=True)
+        write_json(self._path, {"version": 1, "recent": self._recent, "resume": self._resume})
 
     def _load(self, path: Path) -> None:
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except FileNotFoundError:
-            return
-        except (OSError, ValueError):
-            log.warning("ignoring unreadable history at %s", path, exc_info=True)
-            return
+        data = read_json(path)
         if not isinstance(data, dict):
             return
         recent = data.get("recent", [])
