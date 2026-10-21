@@ -28,6 +28,7 @@ def run(argv: list[str] | None = None) -> int:
     engine = QQmlApplicationEngine()
     context = engine.rootContext()
     context.setContextProperty("player", player)
+    context.setContextProperty("tracks", player.tracks)
     context.setContextProperty("theme", appearance.palette)
     context.setContextProperty("appearance", appearance)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
