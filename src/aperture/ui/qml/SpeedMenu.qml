@@ -1,29 +1,13 @@
 import QtQuick
-import QtQuick.Controls.Basic as T
 
-// Glass popover above the options chip: one pill per speed preset.
-T.Popup {
+// One pill per speed preset.
+GlassPopup {
     id: menu
-
-    padding: 16
-
-    background: Rectangle {
-        radius: 18
-        color: theme.popover_bg
-        border.width: 1
-        border.color: theme.bar_border
-    }
 
     contentItem: Column {
         spacing: 12
 
-        UiText {
-            text: "PLAYBACK SPEED"
-            font.pixelSize: 11
-            font.weight: Font.DemiBold
-            font.letterSpacing: 11 * 0.06
-            color: theme.text_tertiary
-        }
+        SectionLabel { text: "Playback speed" }
 
         Grid {
             columns: 4

@@ -101,6 +101,13 @@ Window {
             visible: !player.hasMedia
         }
 
+        // Letterbox bars stay black in either theme.
+        Rectangle {
+            anchors.fill: parent
+            color: "black"
+            visible: player.hasMedia
+        }
+
         VideoOutput {
             id: video
             anchors.fill: parent

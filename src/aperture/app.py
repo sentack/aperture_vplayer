@@ -15,18 +15,21 @@ def run(argv: list[str] | None = None) -> int:
 
     from aperture.core import History
     from aperture.player import PlayerController
-    from aperture.theme import ACCENTS, DARK, DEFAULT_ACCENT, qml_palette
+    from aperture.settings import Settings
+    from aperture.theme.controller import ThemeController
 
     app = QGuiApplication(sys.argv if argv is None else argv)
     app.setApplicationName("Aperture")
 
-    data_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
-    player = PlayerController(History(Path(data_dir) / "history.json"), app)
+    data_dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
+    player = PlayerController(History(data_dir / "history.json"), app)
+    appearance = ThemeController(Settings(data_dir / "settings.json"), app)
     app.aboutToQuit.connect(player.shutdown)
     engine = QQmlApplicationEngine()
     context = engine.rootContext()
     context.setContextProperty("player", player)
-    context.setContextProperty("theme", qml_palette(DARK, ACCENTS[DEFAULT_ACCENT]))
+    context.setContextProperty("theme", appearance.palette)
+    context.setContextProperty("appearance", appearance)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
     if not engine.rootObjects():
         return 1
