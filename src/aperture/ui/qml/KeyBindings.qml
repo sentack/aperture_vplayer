@@ -25,6 +25,8 @@ Item {
     Shortcut { sequence: "]"; onActivated: player.stepRate(1) }
     Shortcut { sequence: "["; onActivated: player.stepRate(-1) }
     Shortcut { sequence: "="; onActivated: player.resetRate() }
+    Shortcut { sequence: "C"; onActivated: tracks.toggleSubtitles() }
+    Shortcut { sequence: "A"; onActivated: tracks.cycleAudio() }
     Shortcut { sequences: ["F", "F11"]; onActivated: keys.fullscreenToggled() }
     Shortcut { sequence: "Escape"; enabled: keys.fullscreen; onActivated: keys.fullscreenToggled() }
     Shortcut { sequences: [StandardKey.Open]; onActivated: keys.openRequested() }

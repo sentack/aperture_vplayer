@@ -13,9 +13,10 @@ Rectangle {
 
     signal fullscreenToggled()
     signal playlistToggled()
+    signal subtitleFileRequested()
 
     readonly property bool hovered: hover.hovered
-    readonly property bool menuOpen: speedMenu.visible || appearanceMenu.visible
+    readonly property bool menuOpen: optionsMenu.visible || appearanceMenu.visible
     readonly property color accent: theme.accent
 
     implicitHeight: 88
@@ -167,7 +168,7 @@ Rectangle {
             onClicked: bar.fullscreenToggled()
         }
 
-        // Options chip: settings button (speed) and accent swatch (appearance).
+        // Options chip: settings button (speed, tracks) and accent swatch (appearance).
         Rectangle {
             id: optionsChip
             Layout.preferredWidth: chipContent.implicitWidth + 12
@@ -192,11 +193,11 @@ Rectangle {
                     width: optionsContent.implicitWidth + 12
                     height: 30
                     radius: 15
-                    color: optionsArea.containsMouse || speedMenu.visible ? theme.chip_bg : "transparent"
+                    color: optionsArea.containsMouse || optionsMenu.visible ? theme.chip_bg : "transparent"
 
                     Accessible.role: Accessible.ButtonMenu
                     Accessible.name: `Playback options, speed ${player.rateLabel}`
-                    Accessible.onPressAction: optionsChip.toggle(speedMenu, appearanceMenu)
+                    Accessible.onPressAction: optionsChip.toggle(optionsMenu, appearanceMenu)
 
                     Row {
                         id: optionsContent
@@ -224,7 +225,7 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: optionsChip.toggle(speedMenu, appearanceMenu)
+                        onClicked: optionsChip.toggle(optionsMenu, appearanceMenu)
                     }
                 }
 
@@ -235,7 +236,7 @@ Rectangle {
 
                     Accessible.role: Accessible.ButtonMenu
                     Accessible.name: "Appearance"
-                    Accessible.onPressAction: optionsChip.toggle(appearanceMenu, speedMenu)
+                    Accessible.onPressAction: optionsChip.toggle(appearanceMenu, optionsMenu)
 
                     Rectangle {
                         anchors.centerIn: parent
@@ -264,12 +265,15 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: optionsChip.toggle(appearanceMenu, speedMenu)
+                        onClicked: optionsChip.toggle(appearanceMenu, optionsMenu)
                     }
                 }
             }
 
-            SpeedMenu { id: speedMenu }
+            OptionsMenu {
+                id: optionsMenu
+                onSubtitleFileRequested: bar.subtitleFileRequested()
+            }
 
             AppearanceMenu { id: appearanceMenu }
         }

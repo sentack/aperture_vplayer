@@ -76,6 +76,15 @@ Window {
         onAccepted: append ? player.addUrls(selectedFiles) : player.openUrls(selectedFiles)
     }
 
+    FileDialog {
+        id: subtitleDialog
+        title: "Load subtitles"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["Subtitles (*.srt *.vtt)", "All files (*)"]
+        currentFolder: player.mediaFolder
+        onAccepted: tracks.addSubtitleUrls(selectedFiles)
+    }
+
     KeyBindings {
         fullscreen: root.fullscreen
         onFullscreenToggled: root.toggleFullscreen()
@@ -305,7 +314,8 @@ Window {
             anchors { left: parent.left; leftMargin: 48; bottom: parent.bottom; bottomMargin: 150 }
             width: parent.width * 0.44
             spacing: 8
-            visible: player.hasMedia
+            // Gives way to subtitles, which sit in the same band above the control bar.
+            visible: player.hasMedia && !subtitleOverlay.visible
             opacity: root.chromeOpacity
 
             UiText {
@@ -324,6 +334,26 @@ Window {
             }
         }
 
+        // External SRT/VTT cues; embedded subtitle streams are drawn by VideoOutput itself.
+        UiText {
+            id: subtitleOverlay
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: root.chromeVisible ? 140 : 48 }
+            width: parent.width * 0.8
+            visible: text !== ""
+            text: tracks.subtitleText
+            textFormat: Text.StyledText
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideNone
+            font.pixelSize: Math.max(18, Math.round(root.height * 0.036))
+            font.weight: Font.DemiBold
+            color: "white"
+            style: Text.Outline
+            styleColor: Qt.rgba(0, 0, 0, 0.85)
+
+            Behavior on anchors.bottomMargin { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+        }
+
         ControlBar {
             id: controlBar
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 32 }
@@ -333,6 +363,7 @@ Window {
             enabled: root.chromeVisible
             onFullscreenToggled: root.toggleFullscreen()
             onPlaylistToggled: root.playlistOpen = !root.playlistOpen
+            onSubtitleFileRequested: subtitleDialog.open()
         }
 
         DropZone {

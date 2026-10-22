@@ -162,6 +162,11 @@ class PlayerController(QObject):
         kind = current.suffix.lstrip(".").upper()
         return f"{self._playlist.index + 1} of {len(self._playlist)} · {kind}"
 
+    @Property(QUrl, notify=playlistChanged)
+    def mediaFolder(self) -> QUrl:
+        """Folder of the loaded file, where subtitle pickers start."""
+        return QUrl.fromLocalFile(str(self._loaded.parent)) if self._loaded else QUrl()
+
     @Property(list, notify=playlistChanged)
     def playlist(self) -> list[str]:
         return [path.name for path in self._playlist.items]
