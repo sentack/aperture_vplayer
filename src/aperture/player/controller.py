@@ -46,6 +46,8 @@ class PlayerController(QObject):
     recentChanged = Signal()
     # Short-lived feedback for the UI toast ("Speed 1.5×", "Resumed at 14:22").
     noticed = Signal(str)
+    # Path of the file now set as source, "" once unloaded.
+    mediaLoaded = Signal(str)
 
     def __init__(self, history: History | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -348,6 +350,7 @@ class PlayerController(QObject):
         self._pending_resume = self._history.resume_point(path)
         self._player.setSource(QUrl.fromLocalFile(str(path)))
         self.tracks.reset(path)
+        self.mediaLoaded.emit(str(path))
         self._player.play()
         self._history.save()
         self.playlistChanged.emit()
@@ -360,6 +363,7 @@ class PlayerController(QObject):
         self._player.stop()
         self._player.setSource(QUrl())
         self.tracks.reset(None)
+        self.mediaLoaded.emit("")
         self._set_error("")
         self.playlistChanged.emit()
 
