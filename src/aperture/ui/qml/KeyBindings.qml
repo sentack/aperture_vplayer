@@ -8,6 +8,7 @@ Item {
 
     signal fullscreenToggled()
     signal openRequested()
+    signal miniToggled()
 
     Shortcut { sequences: ["Space", "K"]; onActivated: player.togglePlay() }
     Shortcut { sequence: "Left"; onActivated: player.seekBy(-5000) }
@@ -28,6 +29,7 @@ Item {
     Shortcut { sequence: "C"; onActivated: tracks.toggleSubtitles() }
     Shortcut { sequence: "A"; onActivated: tracks.cycleAudio() }
     Shortcut { sequences: ["F", "F11"]; onActivated: keys.fullscreenToggled() }
+    Shortcut { sequence: "I"; onActivated: keys.miniToggled() }
     Shortcut { sequence: "Escape"; enabled: keys.fullscreen; onActivated: keys.fullscreenToggled() }
     Shortcut { sequences: [StandardKey.Open]; onActivated: keys.openRequested() }
 }

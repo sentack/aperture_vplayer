@@ -14,12 +14,47 @@ Window {
 
     // Chrome fades out after a still pointer during playback; any movement brings it back.
     property bool idle: false
-    readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered || controlBar.menuOpen || playlistOpen
+    readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered || controlBar.menuOpen
+                                          || playlistOpen || miniControls.hovered
     property real chromeOpacity: chromeVisible ? 1 : 0
     Behavior on chromeOpacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
     property int restoreVisibility: Window.Windowed
     property bool playlistOpen: false
+
+    // Mini player: compact always-on-top window. The full window's geometry is kept to restore it.
+    property bool mini: false
+    property rect fullGeometry
+    property bool fullWasMaximized: false
+
+    function toggleMini() {
+        if (mini) {
+            mini = false
+            if (fullWasMaximized) {
+                showMaximized()
+            } else {
+                x = fullGeometry.x
+                y = fullGeometry.y
+                width = fullGeometry.width
+                height = fullGeometry.height
+            }
+            return
+        }
+        if (!player.hasMedia)
+            return
+        if (fullscreen)
+            visibility = restoreVisibility
+        fullWasMaximized = visibility === Window.Maximized
+        if (fullWasMaximized)
+            showNormal()
+        fullGeometry = Qt.rect(x, y, width, height)
+        playlistOpen = false
+        mini = true
+        width = 400
+        height = 225
+        x = screen.virtualX + screen.width - width - 24
+        y = screen.virtualY + screen.height - height - 64
+    }
 
     // append=false replaces the queue and plays; append=true adds to the end.
     function chooseFiles(append) {
@@ -39,6 +74,8 @@ Window {
         if (fullscreen) {
             visibility = restoreVisibility
         } else {
+            if (mini)
+                toggleMini()
             restoreVisibility = visibility
             showFullScreen()
         }
@@ -46,10 +83,10 @@ Window {
 
     width: 1440
     height: 900
-    minimumWidth: 720
-    minimumHeight: 450
+    minimumWidth: mini ? 320 : 720
+    minimumHeight: mini ? 180 : 450
     visible: true
-    flags: Qt.Window | Qt.FramelessWindowHint
+    flags: mini ? Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint : Qt.Window | Qt.FramelessWindowHint
     title: player.title ? `${player.title} — Aperture` : "Aperture"
     color: theme.bg_0
 
@@ -89,6 +126,7 @@ Window {
         fullscreen: root.fullscreen
         onFullscreenToggled: root.toggleFullscreen()
         onOpenRequested: root.chooseFiles(false)
+        onMiniToggled: root.toggleMini()
     }
 
     Connections {
@@ -103,6 +141,13 @@ Window {
         HoverHandler {
             cursorShape: root.chromeVisible ? Qt.ArrowCursor : Qt.BlankCursor
             onPointChanged: root.wake()
+        }
+
+        // The mini window has no title bar: drag anywhere to move it.
+        DragHandler {
+            target: null
+            enabled: root.mini
+            onActiveChanged: if (active) root.startSystemMove()
         }
 
         BackgroundArt {
@@ -126,7 +171,7 @@ Window {
             TapHandler {
                 onTapped: root.wake()
                 onSingleTapped: player.togglePlay()
-                onDoubleTapped: root.toggleFullscreen()
+                onDoubleTapped: root.mini ? root.toggleMini() : root.toggleFullscreen()
             }
         }
 
@@ -274,13 +319,18 @@ Window {
         }
 
         IdleProgress {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 32; rightMargin: 32; bottomMargin: 52 }
+            anchors {
+                left: parent.left; leftMargin: root.mini ? 12 : 32
+                right: parent.right; rightMargin: root.mini ? 12 : 32
+                bottom: parent.bottom; bottomMargin: root.mini ? 10 : 52
+            }
             value: player.duration > 0 ? player.position / player.duration : 0
-            opacity: player.hasMedia ? 1 - root.chromeOpacity : 0
+            opacity: !player.hasMedia ? 0 : root.mini ? 1 : 1 - root.chromeOpacity
         }
 
         Rectangle {
             id: chromeScrimTop
+            visible: !root.mini
             opacity: root.chromeOpacity
             anchors { left: parent.left; right: parent.right; top: parent.top }
             height: parent.height * 0.19
@@ -292,6 +342,7 @@ Window {
 
         Rectangle {
             id: chromeScrimBottom
+            visible: !root.mini
             opacity: root.chromeOpacity
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: parent.height * 0.33
@@ -305,6 +356,7 @@ Window {
             id: topBar
             anchors { left: parent.left; right: parent.right; top: parent.top }
             fullscreen: root.fullscreen
+            visible: !root.mini
             opacity: root.chromeOpacity
             enabled: root.chromeVisible
         }
@@ -315,7 +367,7 @@ Window {
             width: parent.width * 0.44
             spacing: 8
             // Gives way to subtitles, which sit in the same band above the control bar.
-            visible: player.hasMedia && !subtitleOverlay.visible
+            visible: player.hasMedia && !subtitleOverlay.visible && !root.mini
             opacity: root.chromeOpacity
 
             UiText {
@@ -337,7 +389,11 @@ Window {
         // External SRT/VTT cues; embedded subtitle streams are drawn by VideoOutput itself.
         UiText {
             id: subtitleOverlay
-            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: root.chromeVisible ? 140 : 48 }
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                bottom: parent.bottom
+                bottomMargin: root.mini ? 22 : root.chromeVisible ? 140 : 48
+            }
             width: parent.width * 0.8
             visible: text !== ""
             text: tracks.subtitleText
@@ -345,7 +401,7 @@ Window {
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideNone
-            font.pixelSize: Math.max(18, Math.round(root.height * 0.036))
+            font.pixelSize: Math.max(root.mini ? 13 : 18, Math.round(root.height * 0.036))
             font.weight: Font.DemiBold
             color: "white"
             style: Text.Outline
@@ -359,11 +415,22 @@ Window {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 32 }
             fullscreen: root.fullscreen
             playlistOpen: root.playlistOpen
+            visible: !root.mini
             opacity: root.chromeOpacity
             enabled: root.chromeVisible
             onFullscreenToggled: root.toggleFullscreen()
+            onMiniToggled: root.toggleMini()
             onPlaylistToggled: root.playlistOpen = !root.playlistOpen
             onSubtitleFileRequested: subtitleDialog.open()
+        }
+
+        MiniControls {
+            id: miniControls
+            anchors.fill: parent
+            visible: root.mini
+            opacity: root.chromeOpacity
+            enabled: root.chromeVisible
+            onRestoreRequested: root.toggleMini()
         }
 
         DropZone {
@@ -374,7 +441,7 @@ Window {
 
         PlaylistPanel {
             anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
-            visible: root.playlistOpen
+            visible: root.playlistOpen && !root.mini
             onAddRequested: root.chooseFiles(true)
         }
     }
@@ -382,7 +449,7 @@ Window {
     Toast {
         id: toast
         anchors.horizontalCenter: parent.horizontalCenter
-        y: 84
+        y: root.mini ? 12 : 84
     }
 
     ResizeGrips {}

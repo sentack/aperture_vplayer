@@ -14,6 +14,7 @@ Rectangle {
     signal fullscreenToggled()
     signal playlistToggled()
     signal subtitleFileRequested()
+    signal miniToggled()
 
     readonly property bool hovered: hover.hovered
     readonly property bool menuOpen: optionsMenu.visible || appearanceMenu.visible
@@ -169,6 +170,13 @@ Rectangle {
             label: bar.playlistOpen ? "Hide playlist" : "Show playlist"
             color: bar.playlistOpen || hovered ? theme.chip_bg : "transparent"
             onClicked: bar.playlistToggled()
+        }
+
+        ToggleButton {
+            glyph: Icons.mini
+            label: "Mini player"
+            enabled: player.hasMedia
+            onClicked: bar.miniToggled()
         }
 
         ToggleButton {
