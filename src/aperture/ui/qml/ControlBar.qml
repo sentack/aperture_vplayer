@@ -119,12 +119,21 @@ Rectangle {
         }
 
         TrackSlider {
+            id: seekSlider
             Layout.fillWidth: true
             label: "Seek"
             knobSize: 14
             enabled: player.seekable
             value: player.duration > 0 ? player.position / player.duration : 0
             onMoved: value => player.seek(Math.round(value * player.duration))
+
+            SeekPreview {
+                readonly property real pointerX: seekSlider.hoverValue * seekSlider.width
+                x: Math.max(-40, Math.min(seekSlider.width - width + 40, pointerX - width / 2))
+                y: -height - 26
+                visible: seekSlider.hovering || seekSlider.pressed
+                position: Math.round(seekSlider.hoverValue * player.duration)
+            }
         }
 
         Clock {
