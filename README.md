@@ -46,11 +46,22 @@ pytest
 | N / P | Next / previous |
 | [ / ] | Slower / faster |
 | = | Normal speed |
+| C | Subtitles on / off |
+| A | Next audio track |
+| I | Mini player |
 | F, F11 | Fullscreen |
 | Esc | Leave fullscreen |
 | Ctrl+O | Open files |
 
 History lives in the platform app-data folder (`~/.local/share/Aperture/history.json` on Linux, `%APPDATA%\Aperture\history.json` on Windows).
+
+## Phase 3 — differentiators
+
+- Subtitles: embedded tracks, plus external `.srt` / `.vtt` files. Same-name files next to the video (`Movie.srt`, `Movie.en.srt`) load automatically; others via options menu → Load file, or drop onto the window. Legacy Windows-1252 and UTF-16 files decode correctly.
+- Audio track switching for multi-language files, from options menu or `A`.
+- Light, dark or system theme plus five accents, from the accent swatch. Saved in `settings.json` beside history.
+- Seek-bar hover preview: timestamp at once, frame thumbnail from a second silent decoder, cached per position.
+- Mini player: 400×225 always-on-top window, drag anywhere to move, double-click or restore button to return. Wayland compositors may ignore always-on-top and placement.
 
 - UI spec: [docs/DESIGN_SPEC.md](docs/DESIGN_SPEC.md)
 - Mockup: [docs/reference.html](docs/reference.html)
