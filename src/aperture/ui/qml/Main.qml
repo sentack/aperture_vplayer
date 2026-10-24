@@ -239,13 +239,9 @@ Window {
                     width: parent.width
                     height: 28
 
-                    UiText {
+                    SectionLabel {
                         anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
-                        text: "RECENT"
-                        font.pixelSize: 11
-                        font.weight: Font.DemiBold
-                        font.letterSpacing: 11 * 0.08
-                        color: theme.text_tertiary
+                        text: "Recent"
                     }
 
                     UiText {

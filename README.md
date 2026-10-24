@@ -63,5 +63,7 @@ History lives in the platform app-data folder (`~/.local/share/Aperture/history.
 - Seek-bar hover preview: timestamp at once, frame thumbnail from a second silent decoder, cached per position.
 - Mini player: 400×225 always-on-top window, drag anywhere to move, double-click or restore button to return. Wayland compositors may ignore always-on-top and placement.
 
+## Design
+
 - UI spec: [docs/DESIGN_SPEC.md](docs/DESIGN_SPEC.md)
 - Mockup: [docs/reference.html](docs/reference.html)
