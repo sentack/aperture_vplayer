@@ -314,6 +314,13 @@ Window {
             }
         }
 
+        ErrorCard {
+            anchors.centerIn: parent
+            width: Math.min(420, parent.width - 48)
+            visible: player.errorTitle !== "" && !root.mini
+            onOpenRequested: root.chooseFiles(false)
+        }
+
         IdleProgress {
             anchors {
                 left: parent.left; leftMargin: root.mini ? 12 : 32
@@ -377,7 +384,7 @@ Window {
 
             UiText {
                 width: parent.width
-                text: player.error || player.subtitle
+                text: player.subtitle
                 font.pixelSize: 14
             }
         }
