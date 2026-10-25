@@ -1,5 +1,6 @@
 """Playback core, UI-independent."""
 
+from aperture.core.errors import ERROR_KINDS, FriendlyError, describe_error
 from aperture.core.files import expand_paths
 from aperture.core.formats import VIDEO_EXTENSIONS, dialog_filters, is_video
 from aperture.core.history import History
@@ -11,12 +12,15 @@ from aperture.core.timefmt import format_time
 from aperture.core.tracks import track_label
 
 __all__ = [
+    "ERROR_KINDS",
+    "FriendlyError",
     "VIDEO_EXTENSIONS",
     "History",
     "Playlist",
     "RATES",
     "SUBTITLE_EXTENSIONS",
     "CueTrack",
+    "describe_error",
     "dialog_filters",
     "expand_paths",
     "find_sidecars",
