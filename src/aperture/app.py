@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 
 QML_DIR = Path(__file__).parent / "ui" / "qml"
+ICON_PATH = Path(__file__).parent / "resources" / "aperture.svg"
+# Matches the .desktop file name, so Wayland compositors pair the window with its icon.
+DESKTOP_ID = "io.github.sentack.Aperture"
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +30,7 @@ def _qt_message(mode, context, message: str) -> None:
 
 def run(argv: list[str] | None = None) -> int:
     from PySide6.QtCore import QStandardPaths, QUrl, qInstallMessageHandler
-    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtGui import QGuiApplication, QIcon
     from PySide6.QtQml import QQmlApplicationEngine
 
     from aperture.core import History
@@ -39,6 +42,8 @@ def run(argv: list[str] | None = None) -> int:
 
     app = QGuiApplication(sys.argv if argv is None else argv)
     app.setApplicationName("Aperture")
+    app.setDesktopFileName(DESKTOP_ID)
+    app.setWindowIcon(QIcon(str(ICON_PATH)))
 
     data_dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
     setup_logging(data_dir)
