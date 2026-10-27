@@ -83,9 +83,13 @@ class History:
             return
         recent = data.get("recent", [])
         resume = data.get("resume", {})
+        # Keys go through _key() so files written elsewhere still match lookups here.
         if isinstance(recent, list):
-            self._recent = [p for p in recent if isinstance(p, str)][:RECENT_LIMIT]
+            self._recent = list(dict.fromkeys(_key(p) for p in recent if isinstance(p, str)))
+            del self._recent[RECENT_LIMIT:]
         if isinstance(resume, dict):
             self._resume = {
-                k: v for k, v in resume.items() if isinstance(k, str) and type(v) is int and v > 0
+                _key(k): v
+                for k, v in resume.items()
+                if isinstance(k, str) and type(v) is int and v > 0
             }

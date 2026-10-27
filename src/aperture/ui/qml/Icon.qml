@@ -15,7 +15,8 @@ Shape {
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
-        scale: Qt.size(icon.width / 24, icon.height / 24)
+        // From `size`, not width/height: Shape adjusts its own geometry, which would loop.
+        scale: Qt.size(icon.size / 24, icon.size / 24)
         strokeColor: icon.color
         strokeWidth: icon.glyph.stroke ? icon.strokeWidth : -1
         fillColor: "transparent"
@@ -25,7 +26,8 @@ Shape {
     }
 
     ShapePath {
-        scale: Qt.size(icon.width / 24, icon.height / 24)
+        // From `size`, not width/height: Shape adjusts its own geometry, which would loop.
+        scale: Qt.size(icon.size / 24, icon.size / 24)
         strokeWidth: -1
         fillColor: icon.glyph.fill ? icon.color : "transparent"
         PathSvg { path: icon.glyph.fill || "" }

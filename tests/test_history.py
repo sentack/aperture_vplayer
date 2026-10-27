@@ -121,7 +121,7 @@ def test_malformed_entries_are_dropped(tmp_path):
     }
     path.write_text(json.dumps(data))
     history = History(path)
-    assert history.recent == [Path("/a.mp4")]
+    assert history.recent == [Path("/a.mp4").absolute()]
     assert history.resume_point("/a.mp4") == 9000
     assert history.resume_point("/b.mp4") is None
     assert history.resume_point("/c.mp4") is None
