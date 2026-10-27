@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from aperture.core import (
     RATES,
     History,
     Playlist,
+    describe_error,
     dialog_filters,
     expand_paths,
     format_rate,
@@ -25,6 +27,15 @@ from aperture.player.urls import to_paths
 RESTART_THRESHOLD_MS = 3000
 # How often the resume point is written while playing.
 CHECKPOINT_INTERVAL_MS = 10_000
+
+log = logging.getLogger(__name__)
+
+_ERROR_KINDS = {
+    QMediaPlayer.Error.FormatError: "format",
+    QMediaPlayer.Error.ResourceError: "resource",
+    QMediaPlayer.Error.AccessDeniedError: "access",
+    QMediaPlayer.Error.NetworkError: "network",
+}
 
 _UNLOADED = (
     QMediaPlayer.MediaStatus.NoMedia,
@@ -55,6 +66,7 @@ class PlayerController(QObject):
         self._history = history if history is not None else History()
         self._loaded: Path | None = None  # file currently set as the player's source
         self._pending_resume: int | None = None
+        self._error_title = ""
         self._error = ""
 
         self._audio = QAudioOutput(self)
@@ -73,7 +85,7 @@ class PlayerController(QObject):
         self._player.seekableChanged.connect(self._on_seekable)
         self._player.playbackRateChanged.connect(lambda _: self.rateChanged.emit())
         self._player.mediaStatusChanged.connect(self._on_media_status)
-        self._player.errorOccurred.connect(lambda _, message: self._set_error(message))
+        self._player.errorOccurred.connect(self._on_error)
         self._audio.volumeChanged.connect(lambda _: self.volumeChanged.emit())
         self._audio.mutedChanged.connect(lambda _: self.mutedChanged.emit())
 
@@ -109,6 +121,11 @@ class PlayerController(QObject):
     @Property(bool, notify=mutedChanged)
     def muted(self) -> bool:
         return self._audio.isMuted()
+
+    @Property(str, notify=errorChanged)
+    def errorTitle(self) -> str:
+        """Short headline for the error card; "" when playback is fine."""
+        return self._error_title
 
     @Property(str, notify=errorChanged)
     def error(self) -> str:
@@ -197,6 +214,8 @@ class PlayerController(QObject):
 
     def open_paths(self, paths: Iterable[Path | str]) -> None:
         """Replace the playlist and start its first file. Folders expand to their videos."""
+        paths = list(paths)
+        self._report_missing(paths)
         files = expand_paths(paths)
         if not files:
             return
@@ -207,6 +226,8 @@ class PlayerController(QObject):
 
     def add_paths(self, paths: Iterable[Path | str]) -> None:
         """Append to the playlist; start playing only if nothing is loaded."""
+        paths = list(paths)
+        self._report_missing(paths)
         start = len(self._playlist)
         if not self._playlist.add(expand_paths(paths)):
             return
@@ -331,6 +352,12 @@ class PlayerController(QObject):
 
     # --- internals ---------------------------------------------------------
 
+    def _report_missing(self, paths: list[Path | str]) -> None:
+        missing = [Path(p) for p in paths if not Path(p).exists()]
+        if missing:
+            more = f" and {len(missing) - 1} more" if len(missing) > 1 else ""
+            self.noticed.emit(f"Not found: {missing[0].name}{more}")
+
     def _take_subtitles(self, paths: list[Path]) -> list[Path]:
         """Route dropped or picked subtitle files to the loaded video; return the rest."""
         subtitles = [p for p in paths if is_subtitle(p) and p.is_file()]
@@ -418,7 +445,15 @@ class PlayerController(QObject):
             if self._playlist.has_next:
                 self._load(self._playlist.index + 1)
 
-    def _set_error(self, message: str) -> None:
-        if message != self._error:
-            self._error = message
+    def _on_error(self, error: QMediaPlayer.Error, detail: str) -> None:
+        if error == QMediaPlayer.Error.NoError:
+            return
+        log.warning("playback error for %s: %s (%s)", self._loaded, detail, error)
+        name = self._loaded.name if self._loaded is not None else "this file"
+        friendly = describe_error(_ERROR_KINDS.get(error, "other"), name)
+        self._set_error(friendly.title, friendly.message)
+
+    def _set_error(self, title: str, message: str = "") -> None:
+        if (title, message) != (self._error_title, self._error):
+            self._error_title, self._error = title, message
             self.errorChanged.emit()
