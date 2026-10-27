@@ -8,6 +8,8 @@ Rectangle {
     property alias iconSize: icon.size
     property alias strokeWidth: icon.strokeWidth
     property string label
+    property color iconColor: theme.text_secondary
+    property color iconHoverColor: theme.text_primary
 
     signal clicked()
 
@@ -26,7 +28,7 @@ Rectangle {
     Icon {
         id: icon
         anchors.centerIn: parent
-        color: button.hovered ? theme.text_primary : theme.text_secondary
+        color: button.hovered ? button.iconHoverColor : button.iconColor
     }
 
     MouseArea {

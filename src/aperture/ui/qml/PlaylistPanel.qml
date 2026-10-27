@@ -25,13 +25,7 @@ Rectangle {
             anchors { left: parent.left; leftMargin: 20; verticalCenter: parent.verticalCenter }
             spacing: 8
 
-            UiText {
-                text: "PLAYLIST"
-                font.pixelSize: 11
-                font.weight: Font.DemiBold
-                font.letterSpacing: 11 * 0.08
-                color: theme.text_tertiary
-            }
+            SectionLabel { text: "Playlist" }
 
             UiText {
                 text: player.playlist.length

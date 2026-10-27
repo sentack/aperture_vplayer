@@ -1,6 +1,7 @@
 import QtQuick
 
 // Accent-filled track. Press or drag to scrub: `moved` fires live, `value` follows the model.
+// `hoverValue` tracks the pointer even without a press, for previews.
 Item {
     id: slider
 
@@ -12,6 +13,8 @@ Item {
     signal moved(real value)
 
     readonly property bool pressed: area.pressed
+    readonly property bool hovering: area.containsMouse
+    readonly property real hoverValue: area.hoverValue
     readonly property real shown: Math.max(0, Math.min(1, area.pressed ? area.dragValue : value))
 
     implicitHeight: Math.max(knobSize + 6, 14)
@@ -60,6 +63,7 @@ Item {
         id: area
 
         property real dragValue: 0
+        property real hoverValue: 0
 
         function scrub(x) {
             dragValue = Math.max(0, Math.min(1, x / width))
@@ -67,9 +71,14 @@ Item {
         }
 
         anchors.fill: parent
+        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         preventStealing: true
         onPressed: mouse => scrub(mouse.x)
-        onPositionChanged: mouse => scrub(mouse.x)
+        onPositionChanged: mouse => {
+            hoverValue = Math.max(0, Math.min(1, mouse.x / width))
+            if (pressed)
+                scrub(mouse.x)
+        }
     }
 }

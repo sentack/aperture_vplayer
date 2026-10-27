@@ -13,9 +13,11 @@ Rectangle {
 
     signal fullscreenToggled()
     signal playlistToggled()
+    signal subtitleFileRequested()
+    signal miniToggled()
 
     readonly property bool hovered: hover.hovered
-    readonly property bool menuOpen: speedMenu.visible
+    readonly property bool menuOpen: optionsMenu.visible || appearanceMenu.visible
     readonly property color accent: theme.accent
 
     implicitHeight: 88
@@ -118,12 +120,21 @@ Rectangle {
         }
 
         TrackSlider {
+            id: seekSlider
             Layout.fillWidth: true
             label: "Seek"
             knobSize: 14
             enabled: player.seekable
             value: player.duration > 0 ? player.position / player.duration : 0
             onMoved: value => player.seek(Math.round(value * player.duration))
+
+            SeekPreview {
+                readonly property real pointerX: seekSlider.hoverValue * seekSlider.width
+                x: Math.max(-40, Math.min(seekSlider.width - width + 40, pointerX - width / 2))
+                y: -height - 26
+                visible: seekSlider.hovering || seekSlider.pressed
+                position: Math.round(seekSlider.hoverValue * player.duration)
+            }
         }
 
         Clock {
@@ -162,57 +173,126 @@ Rectangle {
         }
 
         ToggleButton {
+            glyph: Icons.mini
+            label: "Mini player"
+            enabled: player.hasMedia
+            onClicked: bar.miniToggled()
+        }
+
+        ToggleButton {
             glyph: bar.fullscreen ? Icons.exitFullscreen : Icons.fullscreen
             label: bar.fullscreen ? "Exit fullscreen" : "Enter fullscreen"
             onClicked: bar.fullscreenToggled()
         }
 
+        // Options chip: settings button (speed, tracks) and accent swatch (appearance).
         Rectangle {
             id: optionsChip
-            Layout.preferredWidth: chipContent.implicitWidth + 20
+            Layout.preferredWidth: chipContent.implicitWidth + 12
             Layout.preferredHeight: 40
             radius: 16
-            color: chipArea.containsMouse || speedMenu.visible ? theme.track_bg : theme.chip_bg
+            color: theme.chip_bg
 
-            Accessible.role: Accessible.ButtonMenu
-            Accessible.name: `Playback speed ${player.rateLabel}`
-            Accessible.onPressAction: speedMenu.visible ? speedMenu.close() : speedMenu.open()
+            function toggle(menu, other) {
+                other.close()
+                if (menu.visible)
+                    menu.close()
+                else
+                    menu.open()
+            }
 
             Row {
                 id: chipContent
                 anchors.centerIn: parent
-                spacing: 6
+                spacing: 4
 
-                Icon {
-                    anchors.verticalCenter: parent.verticalCenter
-                    size: 18
-                    glyph: Icons.settings
-                    color: chipArea.containsMouse ? theme.text_primary : theme.text_secondary
+                Rectangle {
+                    width: optionsContent.implicitWidth + 12
+                    height: 30
+                    radius: 15
+                    color: optionsArea.containsMouse || optionsMenu.visible ? theme.chip_bg : "transparent"
+
+                    Accessible.role: Accessible.ButtonMenu
+                    Accessible.name: `Playback options, speed ${player.rateLabel}`
+                    Accessible.onPressAction: optionsChip.toggle(optionsMenu, appearanceMenu)
+
+                    Row {
+                        id: optionsContent
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            size: 18
+                            glyph: Icons.settings
+                            color: optionsArea.containsMouse ? theme.text_primary : theme.text_secondary
+                        }
+
+                        Clock {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: player.rate !== 1
+                            text: player.rateLabel
+                            font.weight: Font.DemiBold
+                            color: theme.text_primary
+                        }
+                    }
+
+                    MouseArea {
+                        id: optionsArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: optionsChip.toggle(optionsMenu, appearanceMenu)
+                    }
                 }
 
-                Clock {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 34
-                    text: player.rateLabel
-                    font.weight: Font.DemiBold
-                    color: player.rate === 1 ? theme.text_secondary : theme.text_primary
+                // 26px accent swatch inside a 2px glass ring and a 1px divider ring.
+                Item {
+                    width: 30
+                    height: 30
+
+                    Accessible.role: Accessible.ButtonMenu
+                    Accessible.name: "Appearance"
+                    Accessible.onPressAction: optionsChip.toggle(appearanceMenu, optionsMenu)
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 32
+                        height: 32
+                        radius: 16
+                        color: theme.divider
+                    }
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 30
+                        height: 30
+                        radius: 15
+                        color: theme.bar_bg
+                    }
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 26
+                        height: 26
+                        radius: 13
+                        color: bar.accent
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: optionsChip.toggle(appearanceMenu, optionsMenu)
+                    }
                 }
             }
 
-            MouseArea {
-                id: chipArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: speedMenu.visible ? speedMenu.close() : speedMenu.open()
+            OptionsMenu {
+                id: optionsMenu
+                onSubtitleFileRequested: bar.subtitleFileRequested()
             }
 
-            SpeedMenu {
-                id: speedMenu
-                x: optionsChip.width - width
-                y: -height - 14
-                closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutsideParent
-            }
+            AppearanceMenu { id: appearanceMenu }
         }
     }
 }

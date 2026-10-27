@@ -18,6 +18,8 @@ from aperture.core import (
     format_time,
     step_rate,
 )
+from aperture.player.tracks import TrackSelector, is_subtitle
+from aperture.player.urls import to_paths
 
 # "Previous" restarts the current file once playback is past this point.
 RESTART_THRESHOLD_MS = 3000
@@ -29,14 +31,6 @@ _UNLOADED = (
     QMediaPlayer.MediaStatus.LoadingMedia,
     QMediaPlayer.MediaStatus.InvalidMedia,
 )
-
-
-def _to_paths(urls: Iterable[object]) -> list[Path]:
-    paths = []
-    for url in urls:
-        url = url if isinstance(url, QUrl) else QUrl(str(url))
-        paths.append(Path(url.toLocalFile() if url.isLocalFile() else url.toString()))
-    return paths
 
 
 class PlayerController(QObject):
@@ -52,6 +46,8 @@ class PlayerController(QObject):
     recentChanged = Signal()
     # Short-lived feedback for the UI toast ("Speed 1.5×", "Resumed at 14:22").
     noticed = Signal(str)
+    # Path of the file now set as source, "" once unloaded.
+    mediaLoaded = Signal(str)
 
     def __init__(self, history: History | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -64,6 +60,8 @@ class PlayerController(QObject):
         self._audio = QAudioOutput(self)
         self._player = QMediaPlayer(self)
         self._player.setAudioOutput(self._audio)
+        self.tracks = TrackSelector(self._player, self)
+        self.tracks.noticed.connect(self.noticed)
 
         self._checkpoint_timer = QTimer(self)
         self._checkpoint_timer.setInterval(CHECKPOINT_INTERVAL_MS)
@@ -166,6 +164,11 @@ class PlayerController(QObject):
         kind = current.suffix.lstrip(".").upper()
         return f"{self._playlist.index + 1} of {len(self._playlist)} · {kind}"
 
+    @Property(QUrl, notify=playlistChanged)
+    def mediaFolder(self) -> QUrl:
+        """Folder of the loaded file, where subtitle pickers start."""
+        return QUrl.fromLocalFile(str(self._loaded.parent)) if self._loaded else QUrl()
+
     @Property(list, notify=playlistChanged)
     def playlist(self) -> list[str]:
         return [path.name for path in self._playlist.items]
@@ -214,11 +217,11 @@ class PlayerController(QObject):
 
     @Slot(list)
     def openUrls(self, urls: list) -> None:
-        self.open_paths(_to_paths(urls))
+        self.open_paths(self._take_subtitles(to_paths(urls)))
 
     @Slot(list)
     def addUrls(self, urls: list) -> None:
-        self.add_paths(_to_paths(urls))
+        self.add_paths(self._take_subtitles(to_paths(urls)))
 
     @Slot(int)
     def playIndex(self, index: int) -> None:
@@ -328,6 +331,16 @@ class PlayerController(QObject):
 
     # --- internals ---------------------------------------------------------
 
+    def _take_subtitles(self, paths: list[Path]) -> list[Path]:
+        """Route dropped or picked subtitle files to the loaded video; return the rest."""
+        subtitles = [p for p in paths if is_subtitle(p) and p.is_file()]
+        if subtitles:
+            if self._loaded is None:
+                self.noticed.emit("Open a video before adding subtitles")
+            else:
+                self.tracks.add_files(subtitles)
+        return [p for p in paths if p not in subtitles]
+
     def _load(self, index: int) -> None:
         self._checkpoint()
         path = self._playlist.select(index)
@@ -336,6 +349,8 @@ class PlayerController(QObject):
         self._loaded = path
         self._pending_resume = self._history.resume_point(path)
         self._player.setSource(QUrl.fromLocalFile(str(path)))
+        self.tracks.reset(path)
+        self.mediaLoaded.emit(str(path))
         self._player.play()
         self._history.save()
         self.playlistChanged.emit()
@@ -347,6 +362,8 @@ class PlayerController(QObject):
         self._pending_resume = None
         self._player.stop()
         self._player.setSource(QUrl())
+        self.tracks.reset(None)
+        self.mediaLoaded.emit("")
         self._set_error("")
         self.playlistChanged.emit()
 
