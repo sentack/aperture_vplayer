@@ -1,38 +1,50 @@
-# Aperture
+<p align="center">
+  <img src="packaging/icons/aperture-128.png" width="96" height="96" alt="Aperture icon">
+</p>
 
-Cross-platform desktop video player for Windows and Linux, built on PySide6 (Qt Quick + Qt Multimedia).
+<h1 align="center">Aperture</h1>
 
-## Run
+<p align="center">
+  A lightweight desktop video player for Windows and Linux — a cleaner, calmer take on the classic players.
+</p>
 
-```sh
-python -m venv .venv
-. .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-aperture [video ...]
-```
+<!-- Screenshot / GIF: add assets/screenshot.png and assets/demo.gif, then reference them here. -->
 
-## Test
+## Download
 
-```sh
-pytest
-```
+Get the latest build from [Releases](https://github.com/sentack/aperture_vplayer/releases).
 
-## Phase 1 — core
+| Platform | File | How to run |
+|---|---|---|
+| Windows 10/11 (x64) | `Aperture-<version>-windows-x64-setup.exe` | Run the installer. No admin rights needed; it can add Aperture to "Open with" for video files. |
+| Linux (x86-64) | `Aperture-<version>-x86_64.AppImage` | `chmod +x Aperture-*.AppImage` then run it. |
+| Linux (x86-64) | `Aperture-<version>-linux-x64.tar.gz` | Extract and run `aperture/aperture`. |
 
-- Open MP4, MKV, AVI, MOV, WebM and more (Qt Multimedia FFmpeg backend)
-- Play, pause, stop, seek by click or drag
-- Volume and mute
-- Fullscreen: button, double-click video, Esc to leave
-- Playlist: add, remove, clear, next/previous, auto-advance
-- Controls fade after 2.5 s still pointer during playback
+On X11, Qt needs `libxcb-cursor0` (Debian/Ubuntu: `sudo apt install libxcb-cursor0`).
 
-## Phase 2 — everyday usability
+## Features
 
-- Drag and drop files or folders: on video replaces queue, on playlist panel appends
-- Recent files on start screen, with resume point
-- Resume where you left off (kept per file, cleared once finished)
-- Playback speed 0.25×–2× from options chip or keys
-- Keyboard shortcuts:
+**Playback**
+- MP4, MKV, AVI, MOV, WebM and more through Qt Multimedia's FFmpeg backend
+- Play, pause, stop, seek by click or drag, with a frame preview when hovering the seek bar
+- Volume and mute, speed from 0.25× to 2×
+- Fullscreen, and an always-on-top mini player you can drag anywhere
+- Controls fade away while you watch, leaving a thin progress line
+
+**Library**
+- Playlist with add, remove, next/previous and auto-advance; drop files or whole folders
+- Recent files on the start screen
+- Resumes where you left off, per file, and forgets once you finish
+
+**Subtitles and audio**
+- Embedded subtitle tracks, plus `.srt` / `.vtt` files — same-name files next to the video load automatically
+- Audio track switching for multi-language files
+
+**Look and feel**
+- Light, dark or follow-the-system theme, five accent colors
+- Friendly messages instead of crashes when a file can't be played
+
+## Keyboard shortcuts
 
 | Key | Action |
 |---|---|
@@ -53,15 +65,61 @@ pytest
 | Esc | Leave fullscreen |
 | Ctrl+O | Open files |
 
-History lives in the platform app-data folder (`~/.local/share/Aperture/history.json` on Linux, `%APPDATA%\Aperture\history.json` on Windows).
+## Your data
 
-## Phase 3 — differentiators
+Aperture keeps three small files in the platform app-data folder — `~/.local/share/Aperture/` on Linux, `%APPDATA%\Aperture\` on Windows:
 
-- Subtitles: embedded tracks, plus external `.srt` / `.vtt` files. Same-name files next to the video (`Movie.srt`, `Movie.en.srt`) load automatically; others via options menu → Load file, or drop onto the window. Legacy Windows-1252 and UTF-16 files decode correctly.
-- Audio track switching for multi-language files, from options menu or `A`.
-- Light, dark or system theme plus five accents, from the accent swatch. Saved in `settings.json` beside history.
-- Seek-bar hover preview: timestamp at once, frame thumbnail from a second silent decoder, cached per position.
-- Mini player: 400×225 always-on-top window, drag anywhere to move, double-click or restore button to return. Wayland compositors may ignore always-on-top and placement.
+- `history.json` — recent files and resume points
+- `settings.json` — theme and accent
+- `aperture.log` — rotating log; attach it to bug reports
+
+Delete any of them to reset that part.
+
+## Build from source
+
+Requires Python 3.11+.
+
+```sh
+python -m venv .venv
+. .venv/bin/activate              # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+aperture [video-or-folder ...]
+```
+
+Run the tests (the QML smoke test needs a display, or `QT_QPA_PLATFORM=offscreen`):
+
+```sh
+pytest
+```
+
+Package locally:
+
+```sh
+pip install -e ".[build]"
+pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/
+iscc /DAppVersion=0.4.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
+packaging/linux/build-appimage.sh 0.4.0                     # Linux, needs appimagetool
+```
+
+The icon is generated from code: `python packaging/make_icons.py`.
+
+## Releasing
+
+1. Bump `__version__` in `src/aperture/__init__.py`.
+2. Tag and push: `git tag v0.4.0 && git push origin v0.4.0`.
+
+The release workflow tests, builds the Windows installer and the Linux AppImage and tarball, and publishes them to a GitHub release.
+
+## Project layout
+
+```
+src/aperture/
+  core/      pure Python: playlist, history, subtitle parsing, formats — fully unit-tested
+  player/    Qt Multimedia: playback controller, track selection, thumbnail decoder
+  theme/     design tokens and the live light/dark theme
+  ui/qml/    the interface
+packaging/   PyInstaller spec, Windows installer, AppImage script, icon generator
+```
 
 ## Design
 
