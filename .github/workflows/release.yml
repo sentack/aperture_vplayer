@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag matching the package version (v0.4.0 for __version__ = "0.4.0") to publish.
+# Push a tag matching the package version (v0.1.0 for __version__ = "0.1.0") to publish.
 # Manual runs build the same artifacts without publishing a release.
 on:
   push:
@@ -80,6 +80,8 @@ jobs:
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -88,4 +90,5 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          generate_release_notes: true
+          # Notes for each version live in RELEASE_NOTES.md; edit it before tagging.
+          body_path: RELEASE_NOTES.md

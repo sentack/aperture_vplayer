@@ -97,8 +97,8 @@ Package locally:
 ```sh
 pip install -e ".[build]"
 pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/
-iscc /DAppVersion=0.4.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
-packaging/linux/build-appimage.sh 0.4.0                     # Linux, needs appimagetool
+iscc /DAppVersion=0.1.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
+packaging/linux/build-appimage.sh 0.1.0                     # Linux, needs appimagetool
 ```
 
 The icon is generated from code: `python packaging/make_icons.py`.
@@ -106,7 +106,7 @@ The icon is generated from code: `python packaging/make_icons.py`.
 ## Releasing
 
 1. Bump `__version__` in `src/aperture/__init__.py`.
-2. Tag and push: `git tag v0.4.0 && git push origin v0.4.0`.
+2. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
 
 The release workflow tests, builds the Windows installer and the Linux AppImage and tarball, and publishes them to a GitHub release.
 
