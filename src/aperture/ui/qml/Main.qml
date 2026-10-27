@@ -14,7 +14,7 @@ Window {
 
     // Chrome fades out after a still pointer during playback; any movement brings it back.
     property bool idle: false
-    readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered || playlistOpen
+    readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered || controlBar.menuOpen || playlistOpen
     property real chromeOpacity: chromeVisible ? 1 : 0
     Behavior on chromeOpacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
@@ -76,15 +76,15 @@ Window {
         onAccepted: append ? player.addUrls(selectedFiles) : player.openUrls(selectedFiles)
     }
 
-    Shortcut {
-        sequences: [StandardKey.Open]
-        onActivated: root.chooseFiles(false)
+    KeyBindings {
+        fullscreen: root.fullscreen
+        onFullscreenToggled: root.toggleFullscreen()
+        onOpenRequested: root.chooseFiles(false)
     }
 
-    Shortcut {
-        sequence: "Escape"
-        enabled: root.fullscreen
-        onActivated: root.toggleFullscreen()
+    Connections {
+        target: player
+        function onNoticed(text) { toast.show(text) }
     }
 
     Item {
@@ -161,9 +161,99 @@ Window {
 
             UiText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "MP4, MKV, AVI, MOV, WebM and more · Ctrl+O"
+                text: "MP4, MKV, AVI, MOV, WebM and more · Ctrl+O or drop files"
                 font.pixelSize: 12
                 color: theme.text_tertiary
+            }
+
+            Column {
+                id: recentList
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 420
+                topPadding: 26
+                spacing: 2
+                visible: player.recentFiles.length > 0
+
+                Item {
+                    width: parent.width
+                    height: 28
+
+                    UiText {
+                        anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
+                        text: "RECENT"
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 11 * 0.08
+                        color: theme.text_tertiary
+                    }
+
+                    UiText {
+                        anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                        text: "Clear"
+                        font.pixelSize: 12
+                        color: clearArea.containsMouse ? theme.text_secondary : theme.text_tertiary
+
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Clear recent files"
+                        Accessible.onPressAction: player.clearRecent()
+
+                        MouseArea {
+                            id: clearArea
+                            anchors.fill: parent
+                            anchors.margins: -6
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: player.clearRecent()
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: player.recentFiles.slice(0, 5)
+
+                    Rectangle {
+                        id: recentRow
+
+                        required property var modelData
+
+                        width: recentList.width
+                        height: 44
+                        radius: 12
+                        color: recentArea.containsMouse ? theme.chip_bg : "transparent"
+
+                        Accessible.role: Accessible.Button
+                        Accessible.name: `Open ${modelData.name}`
+                        Accessible.onPressAction: player.openRecent(modelData.path)
+
+                        UiText {
+                            anchors {
+                                left: parent.left; leftMargin: 14
+                                right: resumeLabel.left; rightMargin: 12
+                                verticalCenter: parent.verticalCenter
+                            }
+                            text: recentRow.modelData.name
+                            color: recentArea.containsMouse ? theme.text_primary : theme.text_secondary
+                        }
+
+                        UiText {
+                            id: resumeLabel
+                            anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
+                            text: recentRow.modelData.resume ? `Resume ${recentRow.modelData.resume}` : recentRow.modelData.folder
+                            font.pixelSize: 12
+                            font.features: ({ "tnum": 1 })
+                            color: theme.text_tertiary
+                            elide: Text.ElideNone
+                        }
+
+                        MouseArea {
+                            id: recentArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: player.openRecent(recentRow.modelData.path)
+                        }
+                    }
+                }
             }
         }
 
@@ -238,11 +328,23 @@ Window {
             onPlaylistToggled: root.playlistOpen = !root.playlistOpen
         }
 
+        DropZone {
+            anchors.fill: parent
+            hint: "Drop to play"
+            onUrlsDropped: urls => player.openUrls(urls)
+        }
+
         PlaylistPanel {
             anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
             visible: root.playlistOpen
             onAddRequested: root.chooseFiles(true)
         }
+    }
+
+    Toast {
+        id: toast
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 84
     }
 
     ResizeGrips {}

@@ -133,7 +133,15 @@ Rectangle {
     UiText {
         anchors.centerIn: list
         visible: list.count === 0
-        text: "Queue is empty — add videos with +"
+        text: "Queue is empty — add or drop videos"
         color: theme.text_tertiary
+    }
+
+    DropZone {
+        anchors.fill: parent
+        inset: 6
+        radius: 18
+        hint: "Add to playlist"
+        onUrlsDropped: urls => player.addUrls(urls)
     }
 }
