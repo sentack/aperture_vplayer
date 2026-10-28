@@ -3,10 +3,12 @@ import QtQuick.Window
 import "Icons.js" as Icons
 
 // Title bar for the frameless window: drag to move, double-click to maximize.
+// macOS keeps its convention: window controls on the left, close first.
 Item {
     id: bar
 
     property bool fullscreen: false
+    readonly property bool mac: Qt.platform.os === "osx"
 
     implicitHeight: 64
 
@@ -37,8 +39,8 @@ Item {
     }
 
     Row {
-        anchors.left: parent.left
-        anchors.leftMargin: 36
+        anchors.left: bar.mac && windowControls.visible ? windowControls.right : parent.left
+        anchors.leftMargin: bar.mac && windowControls.visible ? 20 : 36
         anchors.verticalCenter: parent.verticalCenter
         spacing: 12
 
@@ -69,11 +71,21 @@ Item {
     }
 
     Row {
-        anchors.right: parent.right
+        id: windowControls
+        anchors.left: bar.mac ? parent.left : undefined
+        anchors.leftMargin: 20
+        anchors.right: bar.mac ? undefined : parent.right
         anchors.rightMargin: 30
         anchors.verticalCenter: parent.verticalCenter
         spacing: 6
         visible: !bar.fullscreen
+
+        WindowButton {
+            visible: bar.mac
+            glyph: Icons.close
+            label: "Close window"
+            onClicked: bar.Window.window.close()
+        }
 
         WindowButton {
             glyph: Icons.minimize
@@ -88,6 +100,7 @@ Item {
         }
 
         WindowButton {
+            visible: !bar.mac
             glyph: Icons.close
             label: "Close window"
             onClicked: bar.Window.window.close()

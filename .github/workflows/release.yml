@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag matching the package version (v0.1.0 for __version__ = "0.1.0") to publish.
+# Push a tag matching the package version (v0.2.0 for __version__ = "0.2.0") to publish.
 # Manual runs build the same artifacts without publishing a release.
 on:
   push:
@@ -16,8 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         # 22.04's older glibc keeps the AppImage runnable on more distributions.
-        os: [windows-latest, ubuntu-22.04]
+        # macos-14 runs on Apple Silicon, so the .dmg targets arm64 Macs.
+        os: [windows-latest, ubuntu-22.04, macos-14]
     runs-on: ${{ matrix.os }}
+    env:
+      # Signing steps run only once the Developer ID secrets exist.
+      HAS_MACOS_CERT: ${{ secrets.MACOS_CERTIFICATE != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -66,6 +70,33 @@ jobs:
           chmod +x appimagetool
           APPIMAGETOOL="$PWD/appimagetool" packaging/linux/build-appimage.sh "${{ steps.version.outputs.value }}"
 
+      - name: macOS signing keychain
+        if: runner.os == 'macOS' && env.HAS_MACOS_CERT == 'true'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password="$(openssl rand -hex 16)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/certificate.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain"
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+      - name: macOS disk image
+        if: runner.os == 'macOS'
+        env:
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: packaging/macos/build-dmg.sh "${{ steps.version.outputs.value }}"
+
       - uses: actions/upload-artifact@v4
         with:
           name: aperture-${{ runner.os }}
@@ -73,6 +104,7 @@ jobs:
             dist/*.exe
             dist/*.AppImage
             dist/*.tar.gz
+            dist/*.dmg
           if-no-files-found: error
 
   publish:

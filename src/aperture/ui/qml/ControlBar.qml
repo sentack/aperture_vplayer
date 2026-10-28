@@ -10,14 +10,16 @@ Rectangle {
 
     property bool fullscreen: false
     property bool playlistOpen: false
+    property bool settingsOpen: false
 
     signal fullscreenToggled()
     signal playlistToggled()
     signal subtitleFileRequested()
     signal miniToggled()
+    signal settingsToggled()
 
     readonly property bool hovered: hover.hovered
-    readonly property bool menuOpen: optionsMenu.visible || appearanceMenu.visible
+    readonly property bool menuOpen: optionsMenu.visible
     readonly property color accent: theme.accent
 
     implicitHeight: 88
@@ -185,20 +187,19 @@ Rectangle {
             onClicked: bar.fullscreenToggled()
         }
 
-        // Options chip: settings button (speed, tracks) and accent swatch (appearance).
+        // Options chip: playback options (speed, subtitles, audio).
         Rectangle {
             id: optionsChip
-            Layout.preferredWidth: chipContent.implicitWidth + 12
+            Layout.preferredWidth: chipContent.implicitWidth + 8
             Layout.preferredHeight: 40
             radius: 16
             color: theme.chip_bg
 
-            function toggle(menu, other) {
-                other.close()
-                if (menu.visible)
-                    menu.close()
+            function toggle() {
+                if (optionsMenu.visible)
+                    optionsMenu.close()
                 else
-                    menu.open()
+                    optionsMenu.open()
             }
 
             Row {
@@ -214,7 +215,7 @@ Rectangle {
 
                     Accessible.role: Accessible.ButtonMenu
                     Accessible.name: `Playback options, speed ${player.rateLabel}`
-                    Accessible.onPressAction: optionsChip.toggle(optionsMenu, appearanceMenu)
+                    Accessible.onPressAction: optionsChip.toggle()
 
                     Row {
                         id: optionsContent
@@ -242,47 +243,7 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: optionsChip.toggle(optionsMenu, appearanceMenu)
-                    }
-                }
-
-                // 26px accent swatch inside a 2px glass ring and a 1px divider ring.
-                Item {
-                    width: 30
-                    height: 30
-
-                    Accessible.role: Accessible.ButtonMenu
-                    Accessible.name: "Appearance"
-                    Accessible.onPressAction: optionsChip.toggle(appearanceMenu, optionsMenu)
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 32
-                        height: 32
-                        radius: 16
-                        color: theme.divider
-                    }
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 30
-                        height: 30
-                        radius: 15
-                        color: theme.bar_bg
-                    }
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 26
-                        height: 26
-                        radius: 13
-                        color: bar.accent
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: optionsChip.toggle(appearanceMenu, optionsMenu)
+                        onClicked: optionsChip.toggle()
                     }
                 }
             }
@@ -291,8 +252,14 @@ Rectangle {
                 id: optionsMenu
                 onSubtitleFileRequested: bar.subtitleFileRequested()
             }
+        }
 
-            AppearanceMenu { id: appearanceMenu }
+        // Settings sheet toggle: always the rightmost control.
+        ToggleButton {
+            glyph: Icons.gear
+            label: bar.settingsOpen ? "Close settings" : "Settings"
+            color: bar.settingsOpen || hovered ? theme.chip_bg : "transparent"
+            onClicked: bar.settingsToggled()
         }
     }
 }

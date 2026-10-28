@@ -15,12 +15,24 @@ Window {
     // Chrome fades out after a still pointer during playback; any movement brings it back.
     property bool idle: false
     readonly property bool chromeVisible: !idle || !player.playing || controlBar.hovered || controlBar.menuOpen
-                                          || playlistOpen || miniControls.hovered
+                                          || playlistOpen || settingsOpen || miniControls.hovered
     property real chromeOpacity: chromeVisible ? 1 : 0
     Behavior on chromeOpacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
     property int restoreVisibility: Window.Windowed
     property bool playlistOpen: false
+    property bool settingsOpen: false
+
+    // The playlist and settings share the right edge; opening one closes the other.
+    function togglePlaylist() {
+        settingsOpen = false
+        playlistOpen = !playlistOpen
+    }
+
+    function toggleSettings() {
+        playlistOpen = false
+        settingsOpen = !settingsOpen
+    }
 
     // Mini player: compact always-on-top window. The full window's geometry is kept to restore it.
     property bool mini: false
@@ -49,6 +61,7 @@ Window {
             showNormal()
         fullGeometry = Qt.rect(x, y, width, height)
         playlistOpen = false
+        settingsOpen = false
         mini = true
         width = 400
         height = 225
@@ -124,6 +137,8 @@ Window {
 
     KeyBindings {
         fullscreen: root.fullscreen
+        settingsOpen: root.settingsOpen
+        onSettingsToggled: root.toggleSettings()
         onFullscreenToggled: root.toggleFullscreen()
         onOpenRequested: root.chooseFiles(false)
         onMiniToggled: root.toggleMini()
@@ -404,7 +419,7 @@ Window {
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideNone
-            font.pixelSize: Math.max(root.mini ? 13 : 18, Math.round(root.height * 0.036))
+            font.pixelSize: Math.round(Math.max(root.mini ? 13 : 18, root.height * 0.036) * prefs.subtitleScale)
             font.weight: Font.DemiBold
             color: "white"
             style: Text.Outline
@@ -418,12 +433,14 @@ Window {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 32 }
             fullscreen: root.fullscreen
             playlistOpen: root.playlistOpen
+            settingsOpen: root.settingsOpen
             visible: !root.mini
             opacity: root.chromeOpacity
             enabled: root.chromeVisible
             onFullscreenToggled: root.toggleFullscreen()
             onMiniToggled: root.toggleMini()
-            onPlaylistToggled: root.playlistOpen = !root.playlistOpen
+            onPlaylistToggled: root.togglePlaylist()
+            onSettingsToggled: root.toggleSettings()
             onSubtitleFileRequested: subtitleDialog.open()
         }
 
@@ -446,6 +463,12 @@ Window {
             anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
             visible: root.playlistOpen && !root.mini
             onAddRequested: root.chooseFiles(true)
+        }
+
+        SettingsPanel {
+            anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
+            visible: root.settingsOpen && !root.mini
+            onCloseRequested: root.settingsOpen = false
         }
     }
 

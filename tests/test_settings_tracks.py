@@ -77,3 +77,65 @@ def test_settings_ignore_invalid_stored_values(tmp_path):
 def test_settings_reject_invalid_values(field, value):
     with pytest.raises(ValueError):
         setattr(Settings(), field, value)
+
+
+def test_settings_new_fields_round_trip(tmp_path):
+    path = tmp_path / "settings.json"
+    settings = Settings(path)
+    settings.default_volume = 0.65
+    settings.default_rate = "last"
+    settings.last_rate = 1.5
+    settings.subtitles_auto = False
+    settings.subtitle_size = "large"
+    settings.save()
+
+    loaded = Settings(path)
+    assert loaded.default_volume == 0.65
+    assert loaded.start_rate == 1.5
+    assert loaded.subtitles_auto is False
+    assert loaded.subtitle_scale == 1.25
+
+
+def test_settings_fixed_rate_ignores_last_used():
+    settings = Settings()
+    settings.last_rate = 2.0
+    settings.default_rate = 1.25
+    assert settings.start_rate == 1.25
+
+
+def test_settings_reads_phase_4_file(tmp_path):
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps({"version": 1, "theme": "dark", "accent": "green"}))
+    settings = Settings(path)
+    assert (settings.theme_mode, settings.accent) == ("dark", "green")
+    assert settings.default_volume == 1.0 and settings.start_rate == 1.0
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("default_volume", 1.5),
+        ("default_volume", True),
+        ("default_rate", 3.0),
+        ("default_rate", True),
+        ("last_rate", 0.1),
+        ("subtitles_auto", "yes"),
+        ("subtitle_size", "huge"),
+    ],
+)
+def test_settings_reject_invalid_new_values(field, value):
+    with pytest.raises(ValueError):
+        setattr(Settings(), field, value)
+
+
+def test_settings_reset(tmp_path):
+    settings = Settings(tmp_path / "s.json")
+    settings.theme_mode = "light"
+    settings.default_volume = 0.2
+    settings.subtitle_size = "small"
+    settings.reset()
+    assert (settings.theme_mode, settings.default_volume, settings.subtitle_size) == (
+        "system",
+        1.0,
+        "medium",
+    )

@@ -40,11 +40,22 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     from aperture.core import History
     from aperture.player import PlayerController
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
+    from aperture.preferences import PreferencesController
     from aperture.settings import Settings
     from aperture.theme.controller import ThemeController
 
+    settings = Settings(data_dir / "settings.json")
     player = PlayerController(History(data_dir / "history.json"), app)
-    appearance = ThemeController(Settings(data_dir / "settings.json"), app)
+    appearance = ThemeController(settings, app)
+    prefs = PreferencesController(settings, app)
+    prefs.resetDone.connect(appearance.reload)
+
+    # New sessions start from the saved defaults; the speed in use is remembered as it changes.
+    player.volume = settings.default_volume
+    player.rate = settings.start_rate
+    player.rateChanged.connect(lambda: prefs.remember_rate(player.rate))
+    player.tracks.auto_select = settings.subtitles_auto
+    prefs.changed.connect(lambda: setattr(player.tracks, "auto_select", settings.subtitles_auto))
     thumbnail_images = ThumbnailImages()
     thumbnails = ThumbnailService(thumbnail_images, app)
     player.mediaLoaded.connect(thumbnails.setFile)
@@ -59,13 +70,14 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     context.setContextProperty("tracks", player.tracks)
     context.setContextProperty("theme", appearance.palette)
     context.setContextProperty("appearance", appearance)
+    context.setContextProperty("prefs", prefs)
     context.setContextProperty("thumbs", thumbnails)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
     return engine, player
 
 
 def run(argv: list[str] | None = None) -> int:
-    from PySide6.QtCore import QStandardPaths, qInstallMessageHandler
+    from PySide6.QtCore import QEvent, QObject, QStandardPaths, QTimer, qInstallMessageHandler
     from PySide6.QtGui import QGuiApplication, QIcon
 
     from aperture.logs import setup_logging
@@ -83,6 +95,23 @@ def run(argv: list[str] | None = None) -> int:
     if not engine.rootObjects():
         log.critical("could not load the user interface from %s", QML_DIR)
         return 1
+
+    # macOS hands Finder "Open With" and Dock drops to the app as FileOpen events, not argv.
+    # A multi-file open arrives as one event per file; batch them into a single queue.
+    pending: list[str] = []
+    flush = QTimer(app, singleShot=True, interval=150)
+    flush.timeout.connect(lambda: (player.open_paths(pending.copy()), pending.clear()))
+
+    class FileOpenFilter(QObject):
+        def eventFilter(self, obj, event) -> bool:
+            if event.type() == QEvent.Type.FileOpen:
+                pending.append(event.file())
+                flush.start()
+                return True
+            return False
+
+    file_opener = FileOpenFilter(app)
+    app.installEventFilter(file_opener)
 
     player.open_paths(app.arguments()[1:])
     code = app.exec()
