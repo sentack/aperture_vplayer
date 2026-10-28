@@ -65,6 +65,7 @@ class PlayerController(QObject):
         self._playlist = Playlist()
         self._history = history if history is not None else History()
         self._loaded: Path | None = None  # file currently set as the player's source
+        self._rate = 1.0  # re-applied on every load, so the speed survives file changes
         self._pending_resume: int | None = None
         self._error_title = ""
         self._error = ""
@@ -135,7 +136,8 @@ class PlayerController(QObject):
         return self._player.playbackRate()
 
     def _set_rate(self, value: float) -> None:
-        self._player.setPlaybackRate(min(RATES[-1], max(RATES[0], value)))
+        self._rate = min(RATES[-1], max(RATES[0], value))
+        self._player.setPlaybackRate(self._rate)
 
     rate = Property(float, _get_rate, _set_rate, notify=rateChanged)
 
@@ -376,6 +378,7 @@ class PlayerController(QObject):
         self._loaded = path
         self._pending_resume = self._history.resume_point(path)
         self._player.setSource(QUrl.fromLocalFile(str(path)))
+        self._player.setPlaybackRate(self._rate)
         self.tracks.reset(path)
         self.mediaLoaded.emit(str(path))
         self._player.play()

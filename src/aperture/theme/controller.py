@@ -6,7 +6,7 @@ updates in place when the mode, the accent or the OS color scheme changes.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Qt, Signal
+from PySide6.QtCore import Property, QObject, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlPropertyMap
 
@@ -62,6 +62,11 @@ class ThemeController(QObject):
     @Property(list, constant=True)
     def accents(self) -> list[dict[str, str]]:
         return [{"name": name, "color": color} for name, color in ACCENTS.items()]
+
+    @Slot()
+    def reload(self) -> None:
+        """Re-read Settings after something else changed them (reset to defaults)."""
+        self._apply()
 
     def _apply(self) -> None:
         palette = qml_palette(DARK if self.dark else LIGHT, ACCENTS[self._settings.accent])

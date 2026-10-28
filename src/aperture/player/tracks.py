@@ -53,6 +53,8 @@ class TrackSelector(QObject):
         self._embedded: list[_Source] = []
         self._active: _Source | None = None
         self._last: _Source | None = None  # what toggleSubtitles turns back on
+        # Turn on the first sidecar subtitle file automatically when a video loads.
+        self.auto_select = True
         self._cues: CueTrack | None = None
         self._text = ""
 
@@ -117,7 +119,7 @@ class TrackSelector(QObject):
         self._files = [_Source(p.name, path=p) for p in find_sidecars(video)] if video else []
         self._embedded = []
         self._last = None
-        self._activate(self._files[0] if self._files else None)
+        self._activate(self._files[0] if self._files and self.auto_select else None)
         self.audioChanged.emit()
 
     # --- audio -------------------------------------------------------------
