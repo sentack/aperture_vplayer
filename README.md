@@ -147,8 +147,3 @@ src/aperture/
   ui/qml/    the interface
 packaging/   PyInstaller spec, Windows installer, AppImage and dmg scripts, icon generator
 ```
-
-## Design
-
-- UI spec: [docs/DESIGN_SPEC.md](docs/DESIGN_SPEC.md)
-- Mockup: [docs/reference.html](docs/reference.html)
