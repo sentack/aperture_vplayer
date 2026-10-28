@@ -5,10 +5,12 @@ Item {
     id: keys
 
     property bool fullscreen: false
+    property bool settingsOpen: false
 
     signal fullscreenToggled()
     signal openRequested()
     signal miniToggled()
+    signal settingsToggled()
 
     Shortcut { sequences: ["Space", "K"]; onActivated: player.togglePlay() }
     Shortcut { sequence: "Left"; onActivated: player.seekBy(-5000) }
@@ -30,6 +32,12 @@ Item {
     Shortcut { sequence: "A"; onActivated: tracks.cycleAudio() }
     Shortcut { sequences: ["F", "F11"]; onActivated: keys.fullscreenToggled() }
     Shortcut { sequence: "I"; onActivated: keys.miniToggled() }
-    Shortcut { sequence: "Escape"; enabled: keys.fullscreen; onActivated: keys.fullscreenToggled() }
+    Shortcut {
+        sequence: "Escape"
+        enabled: keys.settingsOpen || keys.fullscreen
+        onActivated: keys.settingsOpen ? keys.settingsToggled() : keys.fullscreenToggled()
+    }
+    // "Ctrl" is Command on macOS, so this is ⌘, there — the platform's settings shortcut.
+    Shortcut { sequence: "Ctrl+,"; onActivated: keys.settingsToggled() }
     Shortcut { sequences: [StandardKey.Open]; onActivated: keys.openRequested() }
 }
