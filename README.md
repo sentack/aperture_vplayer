@@ -5,7 +5,7 @@
 <h1 align="center">Aperture</h1>
 
 <p align="center">
-  A lightweight desktop video player for Windows and Linux — a cleaner, calmer take on the classic players.
+  A lightweight desktop video player for Windows, macOS and Linux — a cleaner, calmer take on the classic players.
 </p>
 
 <!-- Screenshot / GIF: add assets/screenshot.png and assets/demo.gif, then reference them here. -->
@@ -19,8 +19,11 @@ Get the latest build from [Releases](https://github.com/sentack/aperture_vplayer
 | Windows 10/11 (x64) | `Aperture-<version>-windows-x64-setup.exe` | Run the installer. No admin rights needed; it can add Aperture to "Open with" for video files. |
 | Linux (x86-64) | `Aperture-<version>-x86_64.AppImage` | `chmod +x Aperture-*.AppImage` then run it. |
 | Linux (x86-64) | `Aperture-<version>-linux-x64.tar.gz` | Extract and run `aperture/aperture`. |
+| macOS 12+ (Apple Silicon) | `Aperture-<version>-macos-arm64.dmg` | Open the disk image and drag Aperture to Applications. |
 
 On X11, Qt needs `libxcb-cursor0` (Debian/Ubuntu: `sudo apt install libxcb-cursor0`).
+
+If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **System Settings → Privacy & Security** and click **Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/Aperture.app`.
 
 ## Features
 
@@ -44,6 +47,13 @@ On X11, Qt needs `libxcb-cursor0` (Debian/Ubuntu: `sudo apt install libxcb-curso
 - Light, dark or follow-the-system theme, five accent colors
 - Friendly messages instead of crashes when a file can't be played
 
+**Settings** (gear at the right of the control bar, or Ctrl+, / ⌘,)
+- Theme and accent color, applied live
+- Starting volume, and starting speed: a fixed preset or the last one used
+- Subtitles on or off by default, and their text size
+- A list of every keyboard shortcut
+- Reset to defaults in one click
+
 ## Keyboard shortcuts
 
 | Key | Action |
@@ -62,15 +72,18 @@ On X11, Qt needs `libxcb-cursor0` (Debian/Ubuntu: `sudo apt install libxcb-curso
 | A | Next audio track |
 | I | Mini player |
 | F, F11 | Fullscreen |
-| Esc | Leave fullscreen |
+| Esc | Leave fullscreen / close settings |
 | Ctrl+O | Open files |
+| Ctrl+, | Settings |
+
+On macOS, Ctrl means ⌘.
 
 ## Your data
 
-Aperture keeps three small files in the platform app-data folder — `~/.local/share/Aperture/` on Linux, `%APPDATA%\Aperture\` on Windows:
+Aperture keeps three small files in the platform app-data folder — `~/.local/share/Aperture/` on Linux, `%APPDATA%\Aperture\` on Windows, `~/Library/Application Support/Aperture/` on macOS:
 
 - `history.json` — recent files and resume points
-- `settings.json` — theme and accent
+- `settings.json` — everything in the settings panel
 - `aperture.log` — rotating log; attach it to bug reports
 
 Delete any of them to reset that part.
@@ -96,19 +109,33 @@ Package locally:
 
 ```sh
 pip install -e ".[build]"
-pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/
-iscc /DAppVersion=0.1.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
-packaging/linux/build-appimage.sh 0.1.0                     # Linux, needs appimagetool
+pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/ (+ dist/Aperture.app on macOS)
+iscc /DAppVersion=0.2.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
+packaging/linux/build-appimage.sh 0.2.0                     # Linux, needs appimagetool
+packaging/macos/build-dmg.sh 0.2.0                          # macOS, needs Xcode command-line tools
 ```
+
+`build-dmg.sh` ad-hoc signs by default. Set `MACOS_SIGN_IDENTITY` to sign with a Developer ID certificate, and `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` to notarize.
 
 The icon is generated from code: `python packaging/make_icons.py`.
 
 ## Releasing
 
 1. Bump `__version__` in `src/aperture/__init__.py`.
-2. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
+2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
 
-The release workflow tests, builds the Windows installer and the Linux AppImage and tarball, and publishes them to a GitHub release.
+The release workflow tests, builds the Windows installer, the Linux AppImage and tarball, and the macOS disk image, then publishes them to a GitHub release.
+
+### macOS signing secrets
+
+Without these the `.dmg` is ad-hoc signed. Add them under **Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+|---|---|
+| `MACOS_CERTIFICATE` | Developer ID Application certificate exported as `.p12`, base64-encoded |
+| `MACOS_CERTIFICATE_PASSWORD` | Password of that `.p12` |
+| `MACOS_SIGN_IDENTITY` | e.g. `Developer ID Application: Your Name (TEAMID)` |
+| `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | Apple account, team ID, and an app-specific password for notarization |
 
 ## Project layout
 
@@ -118,7 +145,7 @@ src/aperture/
   player/    Qt Multimedia: playback controller, track selection, thumbnail decoder
   theme/     design tokens and the live light/dark theme
   ui/qml/    the interface
-packaging/   PyInstaller spec, Windows installer, AppImage script, icon generator
+packaging/   PyInstaller spec, Windows installer, AppImage and dmg scripts, icon generator
 ```
 
 ## Design

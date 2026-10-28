@@ -1,4 +1,4 @@
-"""Render the Aperture app icon to PNG sizes and a Windows .ico, with no image libraries.
+"""Render the Aperture app icon to PNG sizes, a Windows .ico and a macOS .icns, with no image libraries.
 
 The mark is the logo from the UI spec: an accent rounded square holding a white play
 triangle. Shapes are signed distance fields, so one sample per pixel gives clean edges.
@@ -18,8 +18,13 @@ ROOT = Path(__file__).resolve().parent.parent
 ICON_DIR = ROOT / "packaging" / "icons"
 SVG_PATH = ROOT / "src" / "aperture" / "resources" / "aperture.svg"
 
-PNG_SIZES = (16, 24, 32, 48, 64, 128, 256, 512)
+PNG_SIZES = (16, 24, 32, 48, 64, 128, 256, 512, 1024)
 ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
+# macOS icon slots: (type code, pixel size). The @2x slots reuse the larger renders.
+ICNS_SLOTS = (
+    (b"icp4", 16), (b"icp5", 32), (b"icp6", 64), (b"ic07", 128), (b"ic08", 256),
+    (b"ic09", 512), (b"ic10", 1024), (b"ic11", 32), (b"ic12", 64), (b"ic13", 256), (b"ic14", 512),
+)  # fmt: skip
 
 # Geometry in unit coordinates (0..1 across the canvas).
 MARGIN = 0.0625
@@ -103,6 +108,14 @@ def ico(images: dict[int, bytes]) -> bytes:
     return struct.pack("<HHH", 0, 1, len(sizes)) + directory + payload
 
 
+def icns(images: dict[int, bytes]) -> bytes:
+    """Apple icon container; every slot holds PNG data (macOS 10.7 and later)."""
+    body = b"".join(
+        kind + struct.pack(">I", 8 + len(images[size])) + images[size] for kind, size in ICNS_SLOTS
+    )
+    return b"icns" + struct.pack(">I", 8 + len(body)) + body
+
+
 def svg() -> str:
     def px(value: float) -> str:
         return f"{value * 512:g}"
@@ -129,6 +142,7 @@ def main() -> None:
     for size, data in images.items():
         (ICON_DIR / f"aperture-{size}.png").write_bytes(data)
     (ICON_DIR / "aperture.ico").write_bytes(ico({s: images[s] for s in ICO_SIZES}))
+    (ICON_DIR / "aperture.icns").write_bytes(icns(images))
     SVG_PATH.parent.mkdir(parents=True, exist_ok=True)
     SVG_PATH.write_text(svg(), encoding="utf-8")
     (ICON_DIR / "aperture.svg").write_text(svg(), encoding="utf-8")

@@ -1,4 +1,5 @@
-# PyInstaller build: one-folder app at dist/aperture with QML, icons and Qt Multimedia.
+# PyInstaller build: one-folder app at dist/aperture with QML, icons and Qt Multimedia,
+# plus dist/Aperture.app on macOS.
 # From the repo root:  pyinstaller --noconfirm packaging/aperture.spec
 # PyInstaller's PySide6 hooks collect the QML modules and the FFmpeg multimedia backend.
 
@@ -8,6 +9,11 @@ from pathlib import Path
 ROOT = Path(SPECPATH).parent
 SRC = ROOT / "src" / "aperture"
 ICONS = ROOT / "packaging" / "icons"
+
+sys.path.insert(0, str(ROOT / "src"))
+from aperture import __version__  # noqa: E402
+from aperture.app import DESKTOP_ID  # noqa: E402
+from aperture.core.formats import VIDEO_EXTENSIONS  # noqa: E402
 
 a = Analysis(
     [str(ROOT / "packaging" / "launcher.py")],
@@ -50,3 +56,32 @@ exe = EXE(
 )
 
 coll = COLLECT(exe, a.binaries, a.datas, name="aperture", upx=False)
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="Aperture.app",
+        icon=str(ICONS / "aperture.icns"),
+        bundle_identifier=DESKTOP_ID,
+        version=__version__,
+        info_plist={
+            "CFBundleName": "Aperture",
+            "CFBundleDisplayName": "Aperture",
+            "CFBundleShortVersionString": __version__,
+            "CFBundleVersion": __version__,
+            "LSMinimumSystemVersion": "12.0",
+            "LSApplicationCategoryType": "public.app-category.video",
+            "NSHighResolutionCapable": True,
+            # Follow the system light/dark appearance instead of forcing Aqua.
+            "NSRequiresAquaSystemAppearance": False,
+            # "Open With" for every container the player knows, without claiming the default.
+            "CFBundleDocumentTypes": [
+                {
+                    "CFBundleTypeName": "Video",
+                    "CFBundleTypeRole": "Viewer",
+                    "LSHandlerRank": "Alternate",
+                    "CFBundleTypeExtensions": sorted(ext.lstrip(".") for ext in VIDEO_EXTENSIONS),
+                }
+            ],
+        },
+    )

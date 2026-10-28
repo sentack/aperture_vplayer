@@ -73,3 +73,18 @@ def test_ico_encodes_256_as_zero(icons):
 def test_svg_matches_geometry(icons):
     text = icons.svg()
     assert 'rx="112"' in text and "stroke-linejoin=\"round\"" in text
+
+
+def test_icns_layout(icons):
+    images = {size: icons.png(size) for size in {size for _, size in icons.ICNS_SLOTS}}
+    data = icons.icns(images)
+    assert data[:4] == b"icns"
+    assert struct.unpack(">I", data[4:8])[0] == len(data)
+    pos, kinds = 8, []
+    while pos < len(data):
+        kind, (length,) = data[pos : pos + 4], struct.unpack(">I", data[pos + 4 : pos + 8])
+        assert data[pos + 8 : pos + 16] == b"\x89PNG\r\n\x1a\n"
+        kinds.append(kind)
+        pos += length
+    assert pos == len(data)
+    assert kinds == [kind for kind, _ in icons.ICNS_SLOTS]

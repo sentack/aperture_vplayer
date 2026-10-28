@@ -57,3 +57,13 @@ def test_desktop_entry_matches_app_id():
     assert entry["Icon"] == DESKTOP_ID
     assert entry["Exec"] == "aperture %F"
     assert (PACKAGING / "linux" / f"{DESKTOP_ID}.desktop").is_file()
+
+
+def test_macos_bundle_assets():
+    import plistlib
+
+    entitlements = plistlib.loads((PACKAGING / "macos" / "entitlements.plist").read_bytes())
+    assert entitlements["com.apple.security.cs.disable-library-validation"] is True
+    assert (PACKAGING / "icons" / "aperture.icns").read_bytes()[:4] == b"icns"
+    spec = (PACKAGING / "aperture.spec").read_text(encoding="utf-8")
+    assert 'icon=str(ICONS / "aperture.icns")' in spec and "bundle_identifier=DESKTOP_ID" in spec
