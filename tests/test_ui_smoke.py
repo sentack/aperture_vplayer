@@ -115,3 +115,13 @@ def test_lyrics_save_and_embed(ui, app, tmp_path):
     app.processEvents()
     assert not lyrics.property("audioFile")
     assert messages(warnings) == []
+
+
+def test_default_player_prompt_wires_cleanly(ui, app):
+    engine, _, warnings = ui
+    defaults = engine.rootContext().contextProperty("defaults")
+    assert defaults.property("status") in ("default", "other", "unknown")
+    defaults.dismiss()
+    app.processEvents()
+    assert not defaults.property("promptVisible")
+    assert messages(warnings) == []

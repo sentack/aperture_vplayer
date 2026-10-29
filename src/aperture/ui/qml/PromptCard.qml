@@ -9,10 +9,12 @@ Rectangle {
     property alias message: body.text
     property string acceptText
     property string rejectText
+    property string laterText  // optional third, quieter answer
     property bool shown: false
 
     signal accepted()
     signal rejected()
+    signal deferred()
 
     implicitWidth: 320
     implicitHeight: content.implicitHeight + 36
@@ -71,6 +73,23 @@ Rectangle {
                 text: card.rejectText
                 visible: text !== ""
                 onClicked: card.rejected()
+            }
+        }
+
+        UiText {
+            visible: card.laterText !== ""
+            topPadding: 4
+            text: card.laterText
+            font.pixelSize: 12
+            font.underline: laterArea.containsMouse
+            color: theme.text_tertiary
+
+            MouseArea {
+                id: laterArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: card.deferred()
             }
         }
     }

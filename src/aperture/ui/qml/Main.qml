@@ -516,6 +516,18 @@ Window {
             onAccepted: player.acceptResume()
             onRejected: player.declineResume()
         }
+
+        PromptCard {
+            title: "Make Aperture your default video player?"
+            message: "Videos you open from your files will play here."
+            acceptText: "Make default"
+            rejectText: "Not now"
+            laterText: "Don't ask again"
+            shown: defaults.promptVisible && player.resumeOffer === 0
+            onAccepted: defaults.claim()
+            onRejected: defaults.dismiss()
+            onDeferred: defaults.neverAsk()
+        }
     }
 
     Toast {

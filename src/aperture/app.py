@@ -38,6 +38,7 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     from PySide6.QtQml import QQmlApplicationEngine
 
     from aperture.core import History
+    from aperture.defaults import DefaultPlayerController
     from aperture.player import PlayerController
     from aperture.player.lyrics import LyricsController
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
@@ -63,6 +64,8 @@ def load_ui(app, data_dir: Path, on_warnings=None):
 
     follow_prefs()
     prefs.changed.connect(follow_prefs)
+    defaults = DefaultPlayerController(settings, ICON_PATH, app)
+    defaults.noticed.connect(player.noticed)
     lyrics = LyricsController(player, app)
     lyrics.noticed.connect(player.noticed)
     player.lyricsDropped.connect(lyrics.load_files)
@@ -79,6 +82,7 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     context.setContextProperty("player", player)
     context.setContextProperty("tracks", player.tracks)
     context.setContextProperty("lyrics", lyrics)
+    context.setContextProperty("defaults", defaults)
     context.setContextProperty("theme", appearance.palette)
     context.setContextProperty("appearance", appearance)
     context.setContextProperty("prefs", prefs)

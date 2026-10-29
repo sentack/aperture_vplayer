@@ -81,5 +81,26 @@ Root: HKA; Subkey: "Software\Classes\.ts\OpenWithProgids"; ValueType: string; Va
 Root: HKA; Subkey: "Software\Classes\.webm\OpenWithProgids"; ValueType: string; ValueName: "Aperture.Video"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associate
 Root: HKA; Subkey: "Software\Classes\.wmv\OpenWithProgids"; ValueType: string; ValueName: "Aperture.Video"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associate
 
+; Capabilities + RegisteredApplications: lists Aperture in Settings → Default apps, which
+; is the only way Windows 10+ lets a user pick a default player.
+Root: HKA; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "Aperture"; ValueData: "Software\Aperture\Capabilities"; Flags: uninsdeletevalue; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture"; Flags: uninsdeletekey; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "{#AppName}"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Lightweight video player"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".3gp"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".avi"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".flv"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".m2ts"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".m4v"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mkv"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mov"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mp4"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mpeg"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mpg"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".ogv"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".ts"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".webm"; ValueData: "Aperture.Video"; Tasks: associate
+Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".wmv"; ValueData: "Aperture.Video"; Tasks: associate
+
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
