@@ -70,25 +70,37 @@ Rectangle {
         model: player.playlist
         currentIndex: player.currentIndex
 
+        // Single click selects a row; only a double click plays it.
+        property int selectedIndex: -1
+
+        onCountChanged: if (selectedIndex >= count) selectedIndex = -1
+
         delegate: Rectangle {
             id: row
 
             required property int index
             required property string modelData
             readonly property bool current: index === player.currentIndex
+            readonly property bool selected: index === list.selectedIndex
             readonly property bool hovered: rowHover.hovered || removeButton.hovered
 
             width: ListView.view.width
             height: 44
             radius: 12
-            color: current || hovered ? theme.chip_bg : "transparent"
+            color: selected ? theme.track_bg : current || hovered ? theme.chip_bg : "transparent"
+
+            Accessible.role: Accessible.ListItem
+            Accessible.name: modelData
+            Accessible.selected: selected
+            Accessible.onPressAction: player.playIndex(row.index)
 
             HoverHandler { id: rowHover }
 
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: player.playIndex(row.index)
+                onClicked: list.selectedIndex = row.index
+                onDoubleClicked: player.playIndex(row.index)
             }
 
             Rectangle {
