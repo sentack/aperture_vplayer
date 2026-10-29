@@ -7,7 +7,7 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-from aperture.core.formats import is_video
+from aperture.core.formats import is_media
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def natural_key(path: Path) -> list[object]:
 
 
 def expand_paths(paths: Iterable[Path | str]) -> list[Path]:
-    """Files pass through untouched; a folder contributes its video files in natural order.
+    """Files pass through untouched; a folder contributes its video and audio files in natural order.
 
     Folders are not searched recursively. Missing paths are dropped.
     """
@@ -30,7 +30,7 @@ def expand_paths(paths: Iterable[Path | str]) -> list[Path]:
             result.append(path)
         elif path.is_dir():
             try:
-                videos = [child for child in path.iterdir() if child.is_file() and is_video(child)]
+                videos = [child for child in path.iterdir() if child.is_file() and is_media(child)]
             except OSError:
                 log.warning("cannot list %s", path, exc_info=True)
                 continue

@@ -83,3 +83,45 @@ def test_speed_picked_in_settings_applies_now(ui, app):
     player.setProperty("rate", 0.75)
     assert player.property("rate") == 0.75
     assert messages(warnings) == []
+
+
+def test_resume_prompt_idle_without_offer(ui, app):
+    engine, player, warnings = ui
+    assert player.property("resumeOffer") == 0
+    player.declineResume()
+    player.acceptResume()
+    app.processEvents()
+    assert messages(warnings) == []
+
+
+def test_lyrics_save_and_embed(ui, app, tmp_path):
+    from aperture.core.lyrics_tags import read_embedded
+
+    engine, player, warnings = ui
+    lyrics = engine.rootContext().contextProperty("lyrics")
+    song = tmp_path / "Song.mp3"
+    song.write_bytes(bytes(512))
+    player.mediaLoaded.emit(str(song))  # what a real load announces
+    app.processEvents()
+    assert lyrics.property("audioFile") and not lyrics.property("available")
+
+    lyrics.save([{"time": 1000, "text": "first"}, {"time": 3000, "text": "second"}], True)
+    app.processEvents()
+    assert (tmp_path / "Song.lrc").read_text(encoding="utf-8").startswith("[00:01.00]first")
+    assert read_embedded(song).startswith("[00:01.00]first")
+    assert lyrics.property("synced") and lyrics.property("plainText") == "first\nsecond"
+
+    player.mediaLoaded.emit("")
+    app.processEvents()
+    assert not lyrics.property("audioFile")
+    assert messages(warnings) == []
+
+
+def test_default_player_prompt_wires_cleanly(ui, app):
+    engine, _, warnings = ui
+    defaults = engine.rootContext().contextProperty("defaults")
+    assert defaults.property("status") in ("default", "other", "unknown")
+    defaults.dismiss()
+    app.processEvents()
+    assert not defaults.property("promptVisible")
+    assert messages(warnings) == []

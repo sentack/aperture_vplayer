@@ -17,6 +17,8 @@ THEME_MODES = ("system", "dark", "light")
 SUBTITLE_SIZES = {"small": 0.8, "medium": 1.0, "large": 1.25, "xlarge": 1.5}
 # `default_rate` value meaning "start at whatever speed was used last".
 LAST_RATE = "last"
+# Opening a file with a saved position: ask first, resume silently, or start over.
+RESUME_MODES = ("ask", "always", "never")
 
 DEFAULTS: dict[str, object] = {
     "theme": "system",
@@ -26,6 +28,9 @@ DEFAULTS: dict[str, object] = {
     "last_rate": 1.0,
     "subtitles_auto": True,
     "subtitle_size": "medium",
+    "resume": "ask",
+    "ask_default": True,
+    "ask_default_last": 0.0,  # Unix time of the last "make Aperture default?" prompt
 }
 
 
@@ -49,6 +54,12 @@ def _valid(key: str, value: object) -> bool:
             return isinstance(value, bool)
         case "subtitle_size":
             return value in SUBTITLE_SIZES
+        case "resume":
+            return value in RESUME_MODES
+        case "ask_default":
+            return isinstance(value, bool)
+        case "ask_default_last":
+            return _number(value) and value >= 0
     return False
 
 
@@ -75,6 +86,9 @@ class Settings:
     last_rate = _field("last_rate")
     subtitles_auto = _field("subtitles_auto")
     subtitle_size = _field("subtitle_size")
+    resume_mode = _field("resume")
+    ask_default = _field("ask_default")
+    ask_default_last = _field("ask_default_last")
 
     @property
     def start_rate(self) -> float:
@@ -87,7 +101,9 @@ class Settings:
         return SUBTITLE_SIZES[self._values["subtitle_size"]]
 
     def reset(self) -> None:
-        self._values = dict(DEFAULTS)
+        # Bookkeeping, not a customization: keep when the default-player question was last asked.
+        last = self._values["ask_default_last"]
+        self._values = dict(DEFAULTS, ask_default_last=last)
 
     def save(self) -> None:
         if self._path is not None:

@@ -44,7 +44,7 @@ def test_natural_key_orders_numbers_numerically():
 def test_expand_paths(tmp_path):
     show = tmp_path / "show"
     show.mkdir()
-    for name in ("Ep 10.mkv", "Ep 2.mp4", "notes.txt", "Ep 1.AVI"):
+    for name in ("Ep 10.mkv", "Ep 2.mp4", "notes.txt", "Ep 1.AVI", "Theme.mp3"):
         (show / name).touch()
     (show / "extras").mkdir()
     (show / "extras" / "bonus.mp4").touch()
@@ -53,4 +53,4 @@ def test_expand_paths(tmp_path):
 
     result = expand_paths([loose, show, tmp_path / "missing.mp4"])
 
-    assert [p.name for p in result] == ["loose.srt", "Ep 1.AVI", "Ep 2.mp4", "Ep 10.mkv"]
+    assert [p.name for p in result] == ["loose.srt", "Ep 1.AVI", "Ep 2.mp4", "Ep 10.mkv", "Theme.mp3"]

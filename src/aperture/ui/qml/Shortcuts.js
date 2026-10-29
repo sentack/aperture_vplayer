@@ -22,7 +22,7 @@ var groups = [
     { title: "Playlist and window", items: [
         { keys: ["N", "P"], action: "Next / previous" },
         { keys: ["F", "F11"], action: "Fullscreen" },
-        { keys: ["Esc"], action: "Leave fullscreen / close panel" },
+        { keys: ["Esc"], action: "Close settings or dialog / leave fullscreen" },
         { keys: ["I"], action: "Mini player" },
         { keys: ["Ctrl+O"], action: "Open files" },
         { keys: ["Ctrl+,"], action: "Settings" },

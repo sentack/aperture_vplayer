@@ -80,3 +80,11 @@ def test_bundle_drops_unused_qt_addons():
     for needed in ("Qt6Multimedia", "Qt6Quick", "Qt6QuickControls2", "Qt6QuickShapes", "Qt6Svg"):
         assert not any(name.strip(' "\n') in needed for name in names.split(",") if name.strip())
     assert "a.binaries = [entry for entry in a.binaries if _used(entry)]" in spec
+
+
+def test_release_artifacts_are_compressed():
+    iss = (PACKAGING / "windows" / "aperture.iss").read_text(encoding="utf-8")
+    assert "Compression=lzma2/ultra64" in iss and "SolidCompression=yes" in iss
+    appimage = (PACKAGING / "linux" / "build-appimage.sh").read_text(encoding="utf-8")
+    assert "--comp zstd" in appimage and "xz -9" in appimage
+    assert "-format ULMO" in (PACKAGING / "macos" / "build-dmg.sh").read_text(encoding="utf-8")

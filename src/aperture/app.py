@@ -38,7 +38,9 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     from PySide6.QtQml import QQmlApplicationEngine
 
     from aperture.core import History
+    from aperture.defaults import DefaultPlayerController
     from aperture.player import PlayerController
+    from aperture.player.lyrics import LyricsController
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
     from aperture.preferences import PreferencesController
     from aperture.settings import Settings
@@ -55,8 +57,18 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     player.rate = settings.start_rate
     player.rateChanged.connect(lambda: prefs.remember_rate(player.rate))
     prefs.rateSelected.connect(lambda rate: setattr(player, "rate", rate))
-    player.tracks.auto_select = settings.subtitles_auto
-    prefs.changed.connect(lambda: setattr(player.tracks, "auto_select", settings.subtitles_auto))
+
+    def follow_prefs() -> None:
+        player.tracks.auto_select = settings.subtitles_auto
+        player.resume_mode = settings.resume_mode
+
+    follow_prefs()
+    prefs.changed.connect(follow_prefs)
+    defaults = DefaultPlayerController(settings, ICON_PATH, app)
+    defaults.noticed.connect(player.noticed)
+    lyrics = LyricsController(player, app)
+    lyrics.noticed.connect(player.noticed)
+    player.lyricsDropped.connect(lyrics.load_files)
     thumbnail_images = ThumbnailImages()
     thumbnails = ThumbnailService(thumbnail_images, app)
     player.mediaLoaded.connect(thumbnails.setFile)
@@ -69,6 +81,8 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     context = engine.rootContext()
     context.setContextProperty("player", player)
     context.setContextProperty("tracks", player.tracks)
+    context.setContextProperty("lyrics", lyrics)
+    context.setContextProperty("defaults", defaults)
     context.setContextProperty("theme", appearance.palette)
     context.setContextProperty("appearance", appearance)
     context.setContextProperty("prefs", prefs)

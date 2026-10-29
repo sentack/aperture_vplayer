@@ -8,6 +8,9 @@ import "Icons.js" as Icons
 Window {
     id: root
 
+    // Save the resume point while the player still knows where it is; teardown stops it.
+    onClosing: player.shutdown()
+
     readonly property bool fullscreen: visibility === Window.FullScreen
     readonly property color scrimTop: theme.scrim_top
     readonly property color scrimBottom: theme.scrim_bottom
@@ -23,7 +26,7 @@ Window {
     property bool playlistOpen: false
     property bool settingsOpen: false
 
-    // The playlist and settings share the right edge; opening one closes the other.
+    // Settings covers the window, so it closes the playlist sheet when it opens.
     function togglePlaylist() {
         settingsOpen = false
         playlistOpen = !playlistOpen
@@ -135,9 +138,21 @@ Window {
         onAccepted: tracks.addSubtitleUrls(selectedFiles)
     }
 
+    FileDialog {
+        id: lyricsDialog
+        title: "Load lyrics"
+        nameFilters: ["Lyrics (*.lrc *.txt)", "All files (*)"]
+        currentFolder: player.mediaFolder
+        onAccepted: lyrics.loadUrls([selectedFile])
+    }
+
     KeyBindings {
         fullscreen: root.fullscreen
-        settingsOpen: root.settingsOpen
+        modalOpen: root.settingsOpen || lyricsEditor.open
+        onModalClosed: {
+            root.settingsOpen = false
+            lyricsEditor.open = false
+        }
         onSettingsToggled: root.toggleSettings()
         onFullscreenToggled: root.toggleFullscreen()
         onOpenRequested: root.chooseFiles(false)
@@ -404,6 +419,17 @@ Window {
             }
         }
 
+        // Audio files show their lyrics where the picture would be, above the title block.
+        LyricsView {
+            anchors {
+                left: parent.left; right: parent.right; top: topBar.bottom; bottom: parent.bottom
+                leftMargin: 32; rightMargin: 32; topMargin: 4; bottomMargin: 240
+            }
+            visible: lyrics.audioFile && !root.mini
+            onLoadRequested: lyricsDialog.open()
+            onEditRequested: lyricsEditor.begin()
+        }
+
         // External SRT/VTT cues; embedded subtitle streams are drawn by VideoOutput itself.
         UiText {
             id: subtitleOverlay
@@ -464,11 +490,42 @@ Window {
             visible: root.playlistOpen && !root.mini
             onAddRequested: root.chooseFiles(true)
         }
+    }
 
-        SettingsPanel {
-            anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
-            visible: root.settingsOpen && !root.mini
-            onCloseRequested: root.settingsOpen = false
+    LyricsEditor { id: lyricsEditor }
+
+    SettingsDialog {
+        open: root.settingsOpen && !root.mini
+        onCloseRequested: root.settingsOpen = false
+    }
+
+    // Bottom-right questions, newest at the bottom, sitting just above the control bar.
+    Column {
+        id: prompts
+        anchors { right: parent.right; bottom: parent.bottom; rightMargin: 32; bottomMargin: root.mini ? 12 : 140 }
+        spacing: 10
+        visible: !root.mini
+
+        PromptCard {
+            title: `Resume from ${player.resumeOfferLabel}?`
+            message: "You stopped partway through this file last time."
+            acceptText: "Resume"
+            rejectText: "Start over"
+            shown: player.resumeOffer > 0
+            onAccepted: player.acceptResume()
+            onRejected: player.declineResume()
+        }
+
+        PromptCard {
+            title: "Make Aperture your default video player?"
+            message: "Videos you open from your files will play here."
+            acceptText: "Make default"
+            rejectText: "Not now"
+            laterText: "Don't ask again"
+            shown: defaults.promptVisible && player.resumeOffer === 0
+            onAccepted: defaults.claim()
+            onRejected: defaults.dismiss()
+            onDeferred: defaults.neverAsk()
         }
     }
 
