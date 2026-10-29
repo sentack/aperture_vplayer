@@ -27,6 +27,8 @@ from aperture.player.urls import to_paths
 RESTART_THRESHOLD_MS = 3000
 # How often the resume point is written while playing.
 CHECKPOINT_INTERVAL_MS = 10_000
+# A "Resume from 14:22?" offer left unanswered this long counts as "start over".
+RESUME_OFFER_MS = 12_000
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +61,7 @@ class PlayerController(QObject):
     noticed = Signal(str)
     # Path of the file now set as source, "" once unloaded.
     mediaLoaded = Signal(str)
+    resumeOfferChanged = Signal()
 
     def __init__(self, history: History | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -66,7 +69,11 @@ class PlayerController(QObject):
         self._history = history if history is not None else History()
         self._loaded: Path | None = None  # file currently set as the player's source
         self._rate = 1.0  # re-applied on every load, so the speed survives file changes
-        self._pending_resume: int | None = None
+        self._pending_resume: int | None = None  # resume position to seek to once seekable
+        self._resume_offer = 0  # saved position the user is being asked about, 0 when none
+        self._last_position = 0  # last position seen before a stop rewound to 0
+        # What to do with a saved position: ask, resume silently, or always start over.
+        self.resume_mode = "ask"
         self._error_title = ""
         self._error = ""
 
@@ -80,8 +87,13 @@ class PlayerController(QObject):
         self._checkpoint_timer.setInterval(CHECKPOINT_INTERVAL_MS)
         self._checkpoint_timer.timeout.connect(self._checkpoint)
 
+        self._offer_timer = QTimer(self)
+        self._offer_timer.setSingleShot(True)
+        self._offer_timer.setInterval(RESUME_OFFER_MS)
+        self._offer_timer.timeout.connect(self.declineResume)
+
         self._player.playbackStateChanged.connect(self._on_playback_state)
-        self._player.positionChanged.connect(lambda _: self.positionChanged.emit())
+        self._player.positionChanged.connect(self._on_position)
         self._player.durationChanged.connect(lambda _: self.durationChanged.emit())
         self._player.seekableChanged.connect(self._on_seekable)
         self._player.playbackRateChanged.connect(lambda _: self.rateChanged.emit())
@@ -347,6 +359,31 @@ class PlayerController(QObject):
     def formatTime(self, ms: int) -> str:
         return format_time(ms / 1000)
 
+    @Property(int, notify=resumeOfferChanged)
+    def resumeOffer(self) -> int:
+        """Saved position (ms) offered for resuming, 0 when nothing is being offered."""
+        return self._resume_offer
+
+    @Property(str, notify=resumeOfferChanged)
+    def resumeOfferLabel(self) -> str:
+        return format_time(self._resume_offer / 1000) if self._resume_offer else ""
+
+    @Slot()
+    def acceptResume(self) -> None:
+        target = self._take_offer()
+        if not target:
+            return
+        if self._player.isSeekable():
+            self._player.setPosition(target)
+        else:
+            self._pending_resume = target
+        self.noticed.emit(f"Resumed at {format_time(target / 1000)}")
+
+    @Slot()
+    def declineResume(self) -> None:
+        """Start over: the saved point is replaced by the next checkpoint."""
+        self._take_offer()
+
     @Slot()
     def shutdown(self) -> None:
         """Persist the resume point; call before the app quits."""
@@ -376,7 +413,14 @@ class PlayerController(QObject):
         self._set_error("")
         self._history.touch(path)
         self._loaded = path
-        self._pending_resume = self._history.resume_point(path)
+        self._take_offer()
+        self._last_position = 0
+        saved = self._history.resume_point(path)
+        self._pending_resume = saved if self.resume_mode == "always" else None
+        if saved and self.resume_mode == "ask":
+            self._resume_offer = saved
+            self._offer_timer.start()
+            self.resumeOfferChanged.emit()
         self._player.setSource(QUrl.fromLocalFile(str(path)))
         self._player.setPlaybackRate(self._rate)
         self.tracks.reset(path)
@@ -390,6 +434,7 @@ class PlayerController(QObject):
         self._checkpoint()
         self._loaded = None
         self._pending_resume = None
+        self._take_offer()
         self._player.stop()
         self._player.setSource(QUrl())
         self.tracks.reset(None)
@@ -399,15 +444,31 @@ class PlayerController(QObject):
 
     def _checkpoint(self) -> None:
         """Record the loaded file's position as its resume point."""
-        # Before a pending resume lands, position is 0 and would wipe the stored point.
-        if self._loaded is None or self._pending_resume is not None:
+        # Before a pending resume lands, or while the user is still deciding, the position
+        # is near 0 and would wipe the stored point.
+        if self._loaded is None or self._pending_resume is not None or self._resume_offer:
             return
         if self._player.mediaStatus() in _UNLOADED:
             return
         position, duration = self._player.position(), self._player.duration()
+        # Closing the window stops the player, which rewinds it; keep where playback was.
+        if self._player.playbackState() == QMediaPlayer.PlaybackState.StoppedState:
+            position = self._last_position
         self._history.remember_position(self._loaded, position, duration)
         self._history.save()
         self.recentChanged.emit()
+
+    def _take_offer(self) -> int:
+        target, self._resume_offer = self._resume_offer, 0
+        self._offer_timer.stop()
+        if target:
+            self.resumeOfferChanged.emit()
+        return target
+
+    def _on_position(self, position: int) -> None:
+        if self._player.playbackState() != QMediaPlayer.PlaybackState.StoppedState:
+            self._last_position = position
+        self.positionChanged.emit()
 
     def _apply_resume(self) -> None:
         target = self._pending_resume

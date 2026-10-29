@@ -8,7 +8,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from aperture.core import RATES
-from aperture.settings import LAST_RATE, SUBTITLE_SIZES, Settings
+from aperture.settings import LAST_RATE, RESUME_MODES, SUBTITLE_SIZES, Settings
 
 
 def _rate_key(rate: object) -> str:
@@ -94,6 +94,20 @@ class PreferencesController(QObject):
     @Property(list, constant=True)
     def subtitleSizes(self) -> list[str]:
         return list(SUBTITLE_SIZES)
+
+    def _get_resume_mode(self) -> str:
+        return self._settings.resume_mode
+
+    def _set_resume_mode(self, value: str) -> None:
+        if value in RESUME_MODES and value != self._settings.resume_mode:
+            self._settings.resume_mode = value
+            self._commit()
+
+    resumeMode = Property(str, _get_resume_mode, _set_resume_mode, notify=changed)
+
+    @Property(list, constant=True)
+    def resumeModes(self) -> list[str]:
+        return list(RESUME_MODES)
 
     @Slot()
     def reset(self) -> None:

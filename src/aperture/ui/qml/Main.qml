@@ -8,6 +8,9 @@ import "Icons.js" as Icons
 Window {
     id: root
 
+    // Save the resume point while the player still knows where it is; teardown stops it.
+    onClosing: player.shutdown()
+
     readonly property bool fullscreen: visibility === Window.FullScreen
     readonly property color scrimTop: theme.scrim_top
     readonly property color scrimBottom: theme.scrim_bottom
@@ -469,6 +472,24 @@ Window {
             anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
             visible: root.settingsOpen && !root.mini
             onCloseRequested: root.settingsOpen = false
+        }
+    }
+
+    // Bottom-right questions, newest at the bottom, sitting just above the control bar.
+    Column {
+        id: prompts
+        anchors { right: parent.right; bottom: parent.bottom; rightMargin: 32; bottomMargin: root.mini ? 12 : 140 }
+        spacing: 10
+        visible: !root.mini
+
+        PromptCard {
+            title: `Resume from ${player.resumeOfferLabel}?`
+            message: "You stopped partway through this file last time."
+            acceptText: "Resume"
+            rejectText: "Start over"
+            shown: player.resumeOffer > 0
+            onAccepted: player.acceptResume()
+            onRejected: player.declineResume()
         }
     }
 

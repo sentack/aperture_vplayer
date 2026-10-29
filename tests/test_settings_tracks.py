@@ -139,3 +139,14 @@ def test_settings_reset(tmp_path):
         1.0,
         "medium",
     )
+
+
+def test_settings_resume_mode(tmp_path):
+    path = tmp_path / "settings.json"
+    settings = Settings(path)
+    assert settings.resume_mode == "ask"
+    settings.resume_mode = "never"
+    settings.save()
+    assert Settings(path).resume_mode == "never"
+    with pytest.raises(ValueError):
+        settings.resume_mode = "sometimes"

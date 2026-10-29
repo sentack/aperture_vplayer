@@ -55,8 +55,13 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     player.rate = settings.start_rate
     player.rateChanged.connect(lambda: prefs.remember_rate(player.rate))
     prefs.rateSelected.connect(lambda rate: setattr(player, "rate", rate))
-    player.tracks.auto_select = settings.subtitles_auto
-    prefs.changed.connect(lambda: setattr(player.tracks, "auto_select", settings.subtitles_auto))
+
+    def follow_prefs() -> None:
+        player.tracks.auto_select = settings.subtitles_auto
+        player.resume_mode = settings.resume_mode
+
+    follow_prefs()
+    prefs.changed.connect(follow_prefs)
     thumbnail_images = ThumbnailImages()
     thumbnails = ThumbnailService(thumbnail_images, app)
     player.mediaLoaded.connect(thumbnails.setFile)

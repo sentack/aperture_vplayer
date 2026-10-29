@@ -83,3 +83,12 @@ def test_speed_picked_in_settings_applies_now(ui, app):
     player.setProperty("rate", 0.75)
     assert player.property("rate") == 0.75
     assert messages(warnings) == []
+
+
+def test_resume_prompt_idle_without_offer(ui, app):
+    engine, player, warnings = ui
+    assert player.property("resumeOffer") == 0
+    player.declineResume()
+    player.acceptResume()
+    app.processEvents()
+    assert messages(warnings) == []

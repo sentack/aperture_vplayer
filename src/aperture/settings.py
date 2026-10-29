@@ -17,6 +17,8 @@ THEME_MODES = ("system", "dark", "light")
 SUBTITLE_SIZES = {"small": 0.8, "medium": 1.0, "large": 1.25, "xlarge": 1.5}
 # `default_rate` value meaning "start at whatever speed was used last".
 LAST_RATE = "last"
+# Opening a file with a saved position: ask first, resume silently, or start over.
+RESUME_MODES = ("ask", "always", "never")
 
 DEFAULTS: dict[str, object] = {
     "theme": "system",
@@ -26,6 +28,7 @@ DEFAULTS: dict[str, object] = {
     "last_rate": 1.0,
     "subtitles_auto": True,
     "subtitle_size": "medium",
+    "resume": "ask",
 }
 
 
@@ -49,6 +52,8 @@ def _valid(key: str, value: object) -> bool:
             return isinstance(value, bool)
         case "subtitle_size":
             return value in SUBTITLE_SIZES
+        case "resume":
+            return value in RESUME_MODES
     return False
 
 
@@ -75,6 +80,7 @@ class Settings:
     last_rate = _field("last_rate")
     subtitles_auto = _field("subtitles_auto")
     subtitle_size = _field("subtitle_size")
+    resume_mode = _field("resume")
 
     @property
     def start_rate(self) -> float:
