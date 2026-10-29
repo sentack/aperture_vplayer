@@ -27,8 +27,12 @@ OutputDir=..\..\dist
 OutputBaseFilename=Aperture-{#AppVersion}-windows-x64-setup
 SetupIconFile=..\icons\aperture.ico
 UninstallDisplayIcon={app}\{#AppExe}
-Compression=lzma2/max
+; Release compression (v0.3.0+): LZMA2 at its strongest preset, one solid block, done in a
+; separate process so the large dictionary does not exhaust the compiler's memory.
+Compression=lzma2/ultra64
 SolidCompression=yes
+LZMAUseSeparateProcess=yes
+LZMANumBlockThreads=4
 WizardStyle=modern
 ChangesAssociations=yes
 CloseApplications=yes

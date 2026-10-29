@@ -18,7 +18,7 @@ Get the latest build from [Releases](https://github.com/sentack/aperture_vplayer
 |---|---|---|
 | Windows 10/11 (x64) | `Aperture-<version>-windows-x64-setup.exe` | Run the installer. No admin rights needed; it can add Aperture to "Open with" for video files. |
 | Linux (x86-64) | `Aperture-<version>-x86_64.AppImage` | `chmod +x Aperture-*.AppImage` then run it. |
-| Linux (x86-64) | `Aperture-<version>-linux-x64.tar.gz` | Extract and run `aperture/aperture`. |
+| Linux (x86-64) | `Aperture-<version>-linux-x64.tar.xz` | Extract and run `aperture/aperture`. |
 | macOS 12+ (Apple Silicon) | `Aperture-<version>-macos-arm64.dmg` | Open the disk image and drag Aperture to Applications. |
 
 On X11, Qt needs `libxcb-cursor0` (Debian/Ubuntu: `sudo apt install libxcb-cursor0`).
@@ -35,7 +35,7 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 - Controls fade away while you watch, leaving a thin progress line
 
 **Library**
-- Playlist with add, remove, next/previous and auto-advance; drop files or whole folders
+- Playlist with add, remove, next/previous and auto-advance; drop files or whole folders; double-click a row to play it
 - Recent files on the start screen
 - Resumes where you left off, per file, and forgets once you finish
 
@@ -47,12 +47,22 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 - Light, dark or follow-the-system theme, five accent colors
 - Friendly messages instead of crashes when a file can't be played
 
+**Audio and lyrics**
+- Plays MP3, FLAC, M4A, Ogg, Opus, WAV and more
+- Synced lyrics that scroll with the song, Spotify-style; click a line to jump there
+- Lyrics come from a `.lrc` / `.txt` file next to the track, or from the file's own tags
+- Write lyrics, tap along to sync them, then save a `.lrc` and embed it in MP3, FLAC, M4A, Ogg or Opus tags
+
 **Settings** (gear at the right of the control bar, or Ctrl+, / ⌘,)
-- Theme and accent color, applied live
-- Starting volume, and starting speed: a fixed preset or the last one used
-- Subtitles on or off by default, and their text size
-- A list of every keyboard shortcut
-- Reset to defaults in one click
+- **General:** make Aperture the default player, reset everything to defaults
+- **Playback:** starting volume and speed, and whether to ask, resume or start over on files you left partway
+- **Appearance:** theme and accent color, applied live
+- **Subtitles:** on or off by default, text size
+- **Keyboard shortcuts:** the full list
+
+**Picking up where you left off**
+- Reopening a file you stopped partway through, including from Recent, asks "Resume from 14:22?" in the corner
+- Aperture offers, at most once every 6 hours, to become your default video player
 
 ## Keyboard shortcuts
 
@@ -83,7 +93,7 @@ On macOS, Ctrl means ⌘.
 Aperture keeps three small files in the platform app-data folder — `~/.local/share/Aperture/` on Linux, `%APPDATA%\Aperture\` on Windows, `~/Library/Application Support/Aperture/` on macOS:
 
 - `history.json` — recent files and resume points
-- `settings.json` — everything in the settings panel
+- `settings.json` — everything in Settings
 - `aperture.log` — rotating log; attach it to bug reports
 
 Delete any of them to reset that part.
@@ -110,9 +120,9 @@ Package locally:
 ```sh
 pip install -e ".[build]"
 pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/ (+ dist/Aperture.app on macOS)
-iscc /DAppVersion=0.2.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
-packaging/linux/build-appimage.sh 0.2.0                     # Linux, needs appimagetool
-packaging/macos/build-dmg.sh 0.2.0                          # macOS, needs Xcode command-line tools
+iscc /DAppVersion=0.3.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
+packaging/linux/build-appimage.sh 0.3.0                     # Linux, needs appimagetool
+packaging/macos/build-dmg.sh 0.3.0                          # macOS, needs Xcode command-line tools
 ```
 
 `build-dmg.sh` ad-hoc signs by default. Set `MACOS_SIGN_IDENTITY` to sign with a Developer ID certificate, and `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` to notarize.
@@ -122,7 +132,7 @@ The icon is generated from code: `python packaging/make_icons.py`.
 ## Releasing
 
 1. Bump `__version__` in `src/aperture/__init__.py`.
-2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+2. Tag and push: `git tag v0.3.0 && git push origin v0.3.0`.
 
 The release workflow tests, builds the Windows installer, the Linux AppImage and tarball, and the macOS disk image, then publishes them to a GitHub release.
 

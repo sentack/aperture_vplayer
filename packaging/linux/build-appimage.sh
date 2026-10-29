@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Wrap the PyInstaller build (dist/aperture) into an AppImage and a plain tarball.
+# Wrap the PyInstaller build (dist/aperture) into a compressed AppImage and tarball.
 #
-#   packaging/linux/build-appimage.sh 0.2.0
+#   packaging/linux/build-appimage.sh 0.3.0
 #
 # Needs appimagetool on PATH or in $APPIMAGETOOL. Without FUSE (containers, CI),
 # export APPIMAGE_EXTRACT_AND_RUN=1 first.
@@ -37,7 +37,11 @@ exec "$here/usr/bin/aperture" "$@"
 EOF
 chmod +x "$appdir/AppRun"
 
-ARCH=x86_64 "$tool" --no-appstream "$appdir" "$dist/Aperture-$version-x86_64.AppImage"
-tar -C "$dist" -czf "$dist/Aperture-$version-linux-x64.tar.gz" aperture
+# Release compression (v0.3.0+): zstd at level 19 for the AppImage's squashfs (small, still
+# fast to start), xz -9 for the tarball.
+ARCH=x86_64 "$tool" --no-appstream --comp zstd \
+    --mksquashfs-opt -Xcompression-level --mksquashfs-opt 19 \
+    "$appdir" "$dist/Aperture-$version-x86_64.AppImage"
+tar -C "$dist" -cf - aperture | xz -9 -T0 > "$dist/Aperture-$version-linux-x64.tar.xz"
 
 echo "built $dist/Aperture-$version-x86_64.AppImage"

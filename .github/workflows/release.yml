@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag matching the package version (v0.2.0 for __version__ = "0.2.0") to publish.
+# Push a tag matching the package version (v0.3.0 for __version__ = "0.3.0") to publish.
 # Manual runs build the same artifacts without publishing a release.
 on:
   push:
@@ -98,13 +98,17 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: packaging/macos/build-dmg.sh "${{ steps.version.outputs.value }}"
 
+      - name: Artifact sizes
+        shell: bash
+        run: ls -lh dist/*.exe dist/*.AppImage dist/*.tar.xz dist/*.dmg 2>/dev/null || true
+
       - uses: actions/upload-artifact@v4
         with:
           name: aperture-${{ runner.os }}
           path: |
             dist/*.exe
             dist/*.AppImage
-            dist/*.tar.gz
+            dist/*.tar.xz
             dist/*.dmg
           if-no-files-found: error
 

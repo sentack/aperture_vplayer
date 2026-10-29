@@ -74,6 +74,8 @@ exe = EXE(
     upx=False,
 )
 
+# No UPX: it breaks Qt plugins and makes antivirus flag the binaries. Compression happens
+# at the installer / image stage instead (Inno LZMA2, AppImage zstd, tar xz, dmg LZMA).
 coll = COLLECT(exe, a.binaries, a.datas, name="aperture", upx=False)
 
 if sys.platform == "darwin":
