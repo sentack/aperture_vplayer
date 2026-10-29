@@ -67,3 +67,16 @@ def test_macos_bundle_assets():
     assert (PACKAGING / "icons" / "aperture.icns").read_bytes()[:4] == b"icns"
     spec = (PACKAGING / "aperture.spec").read_text(encoding="utf-8")
     assert 'icon=str(ICONS / "aperture.icns")' in spec and "bundle_identifier=DESKTOP_ID" in spec
+
+
+def test_bundle_drops_unused_qt_addons():
+    import re
+
+    spec = (PACKAGING / "aperture.spec").read_text(encoding="utf-8")
+    names = re.search(r"UNUSED_QT = \((.*?)\)", spec, re.S).group(1)
+    for addon in ("WebEngine", "Quick3D", "Pdf"):
+        assert f'"{addon}"' in names
+    # Add-ons the player does use must never match the filter.
+    for needed in ("Qt6Multimedia", "Qt6Quick", "Qt6QuickControls2", "Qt6QuickShapes", "Qt6Svg"):
+        assert not any(name.strip(' "\n') in needed for name in names.split(",") if name.strip())
+    assert "a.binaries = [entry for entry in a.binaries if _used(entry)]" in spec

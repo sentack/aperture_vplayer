@@ -42,6 +42,25 @@ a = Analysis(
     noarchive=False,
 )
 
+# `excludes` only stops Python imports. The QML hooks still copy every Qt add-on's libraries
+# and QML plugins, including Qt6WebEngineCore (~200 MB, the file that broke the Windows
+# installer). Drop anything from add-ons the player never loads.
+UNUSED_QT = (
+    "WebEngine", "WebView", "WebChannel", "WebSockets", "Qt3D", "Qt63D", "Quick3D",
+    "Charts", "DataVisualization", "Graphs", "Pdf", "Location", "Positioning",
+    "Sensors", "SerialPort", "Bluetooth", "Nfc", "RemoteObjects", "Scxml",
+    "StateMachine", "VirtualKeyboard", "TextToSpeech", "SpatialAudio", "Designer",
+    "Help", "UiTools", "Lottie",
+)  # fmt: skip
+
+
+def _used(entry) -> bool:
+    return not any(name in entry[0] for name in UNUSED_QT)
+
+
+a.binaries = [entry for entry in a.binaries if _used(entry)]
+a.datas = [entry for entry in a.datas if _used(entry)]
+
 pyz = PYZ(a.pure)
 
 exe = EXE(

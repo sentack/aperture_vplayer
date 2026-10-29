@@ -53,7 +53,8 @@ jobs:
           fi
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
-      - run: pyinstaller --noconfirm packaging/aperture.spec
+      # --clean: never reuse a cached or half-written build (the corrupted-DLL failure).
+      - run: pyinstaller --clean --noconfirm packaging/aperture.spec
 
       - name: Windows installer
         if: runner.os == 'Windows'
