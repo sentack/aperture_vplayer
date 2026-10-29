@@ -437,6 +437,9 @@ class PlayerController(QObject):
 
     def _on_media_status(self, status: QMediaPlayer.MediaStatus) -> None:
         if status in (QMediaPlayer.MediaStatus.LoadedMedia, QMediaPlayer.MediaStatus.BufferedMedia):
+            # The backend can fall back to 1× when it opens a new file; insist on the chosen speed.
+            if self._player.playbackRate() != self._rate:
+                self._player.setPlaybackRate(self._rate)
             self._apply_resume()
         elif status == QMediaPlayer.MediaStatus.InvalidMedia:
             self._pending_resume = None

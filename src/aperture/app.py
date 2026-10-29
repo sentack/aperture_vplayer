@@ -54,6 +54,7 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     player.volume = settings.default_volume
     player.rate = settings.start_rate
     player.rateChanged.connect(lambda: prefs.remember_rate(player.rate))
+    prefs.rateSelected.connect(lambda rate: setattr(player, "rate", rate))
     player.tracks.auto_select = settings.subtitles_auto
     prefs.changed.connect(lambda: setattr(player.tracks, "auto_select", settings.subtitles_auto))
     thumbnail_images = ThumbnailImages()

@@ -19,6 +19,8 @@ class PreferencesController(QObject):
     changed = Signal()
     # After reset(): listeners holding derived state (the theme) re-read Settings.
     resetDone = Signal()
+    # A fixed speed was picked in Settings: it applies to what is playing now, too.
+    rateSelected = Signal(float)
 
     def __init__(self, settings: Settings, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -56,6 +58,8 @@ class PreferencesController(QObject):
         if value != self._settings.default_rate:
             self._settings.default_rate = value
             self._commit()
+        if value != LAST_RATE:
+            self.rateSelected.emit(value)
 
     defaultRate = Property(str, _get_rate, _set_rate, notify=changed)
 

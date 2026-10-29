@@ -72,3 +72,14 @@ def test_settings_panel_opens_and_resets_cleanly(ui, app):
     window.setProperty("settingsOpen", False)
     app.processEvents()
     assert messages(warnings) == []
+
+
+def test_speed_picked_in_settings_applies_now(ui, app):
+    engine, player, warnings = ui
+    prefs = engine.rootContext().contextProperty("prefs")
+    prefs.setProperty("defaultRate", "1.5")
+    app.processEvents()
+    assert player.property("rate") == 1.5
+    player.setProperty("rate", 0.75)
+    assert player.property("rate") == 0.75
+    assert messages(warnings) == []
