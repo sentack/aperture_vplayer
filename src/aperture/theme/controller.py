@@ -21,7 +21,9 @@ class ThemeController(QObject):
     def __init__(self, settings: Settings, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._settings = settings
-        self.palette = QQmlPropertyMap(self)
+        # PySide6 deprecates the parent-taking constructor; parent it afterwards instead.
+        self.palette = QQmlPropertyMap()
+        self.palette.setParent(self)
         QGuiApplication.styleHints().colorSchemeChanged.connect(lambda _: self._apply())
         self._apply()
 
