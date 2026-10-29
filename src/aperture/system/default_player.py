@@ -82,7 +82,8 @@ def install_appimage_entry(appimage: Path, icon_svg: Path) -> Path:
         "Type=Application\n"
         "Name=Aperture\n"
         "GenericName=Video Player\n"
-        f"Exec=\"{appimage}\" %F\n"
+        # Desktop entries are POSIX-only; as_posix() also keeps tests stable on Windows.
+        f"Exec=\"{appimage.as_posix()}\" %F\n"
         f"Icon={APP_ID}\n"
         "Terminal=false\n"
         "Categories=AudioVideo;Video;Player;Qt;\n"
