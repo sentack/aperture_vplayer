@@ -80,7 +80,8 @@ def test_mime_types_match_desktop_entry():
 def test_installer_registers_default_apps_capabilities():
     iss = (ROOT / "packaging" / "windows" / "aperture.iss").read_text(encoding="utf-8")
     assert 'ValueName: "Aperture"; ValueData: "Software\\Aperture\\Capabilities"' in iss
-    capabilities = set(re.findall(r'FileAssociations"; ValueType: string; ValueName: "(\.\w+)"', iss))
+    pattern = r'FileAssociations"; ValueType: string; ValueName: "(\.\w+)"'
+    capabilities = set(re.findall(pattern, iss))
     assert capabilities == VIDEO_EXTENSIONS
     assert "registeredAppUser=Aperture" in default_player.WINDOWS_DEFAULT_APPS
 

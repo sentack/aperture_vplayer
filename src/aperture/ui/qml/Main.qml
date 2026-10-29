@@ -26,7 +26,7 @@ Window {
     property bool playlistOpen: false
     property bool settingsOpen: false
 
-    // The playlist and settings share the right edge; opening one closes the other.
+    // Settings covers the window, so it closes the playlist sheet when it opens.
     function togglePlaylist() {
         settingsOpen = false
         playlistOpen = !playlistOpen
@@ -490,15 +490,14 @@ Window {
             visible: root.playlistOpen && !root.mini
             onAddRequested: root.chooseFiles(true)
         }
-
-        SettingsPanel {
-            anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
-            visible: root.settingsOpen && !root.mini
-            onCloseRequested: root.settingsOpen = false
-        }
     }
 
     LyricsEditor { id: lyricsEditor }
+
+    SettingsDialog {
+        open: root.settingsOpen && !root.mini
+        onCloseRequested: root.settingsOpen = false
+    }
 
     // Bottom-right questions, newest at the bottom, sitting just above the control bar.
     Column {
