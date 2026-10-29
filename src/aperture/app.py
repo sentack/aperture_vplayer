@@ -39,6 +39,7 @@ def load_ui(app, data_dir: Path, on_warnings=None):
 
     from aperture.core import History
     from aperture.player import PlayerController
+    from aperture.player.lyrics import LyricsController
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
     from aperture.preferences import PreferencesController
     from aperture.settings import Settings
@@ -62,6 +63,9 @@ def load_ui(app, data_dir: Path, on_warnings=None):
 
     follow_prefs()
     prefs.changed.connect(follow_prefs)
+    lyrics = LyricsController(player, app)
+    lyrics.noticed.connect(player.noticed)
+    player.lyricsDropped.connect(lyrics.load_files)
     thumbnail_images = ThumbnailImages()
     thumbnails = ThumbnailService(thumbnail_images, app)
     player.mediaLoaded.connect(thumbnails.setFile)
@@ -74,6 +78,7 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     context = engine.rootContext()
     context.setContextProperty("player", player)
     context.setContextProperty("tracks", player.tracks)
+    context.setContextProperty("lyrics", lyrics)
     context.setContextProperty("theme", appearance.palette)
     context.setContextProperty("appearance", appearance)
     context.setContextProperty("prefs", prefs)

@@ -61,6 +61,9 @@ class PlayerController(QObject):
     noticed = Signal(str)
     # Path of the file now set as source, "" once unloaded.
     mediaLoaded = Signal(str)
+    # Dropped or picked .lrc files, for the lyrics controller.
+    lyricsDropped = Signal(list)
+    hasVideoChanged = Signal()
     resumeOfferChanged = Signal()
 
     def __init__(self, history: History | None = None, parent: QObject | None = None) -> None:
@@ -96,6 +99,7 @@ class PlayerController(QObject):
         self._player.positionChanged.connect(self._on_position)
         self._player.durationChanged.connect(lambda _: self.durationChanged.emit())
         self._player.seekableChanged.connect(self._on_seekable)
+        self._player.hasVideoChanged.connect(lambda _: self.hasVideoChanged.emit())
         self._player.playbackRateChanged.connect(lambda _: self.rateChanged.emit())
         self._player.mediaStatusChanged.connect(self._on_media_status)
         self._player.errorOccurred.connect(self._on_error)
@@ -119,6 +123,10 @@ class PlayerController(QObject):
     @Property(bool, notify=seekableChanged)
     def seekable(self) -> bool:
         return self._player.isSeekable()
+
+    @Property(bool, notify=hasVideoChanged)
+    def hasVideo(self) -> bool:
+        return self._player.hasVideo()
 
     def _get_volume(self) -> float:
         return self._audio.volume()
@@ -398,14 +406,17 @@ class PlayerController(QObject):
             self.noticed.emit(f"Not found: {missing[0].name}{more}")
 
     def _take_subtitles(self, paths: list[Path]) -> list[Path]:
-        """Route dropped or picked subtitle files to the loaded video; return the rest."""
+        """Route subtitle and .lrc lyrics files to the loaded media; return the rest."""
         subtitles = [p for p in paths if is_subtitle(p) and p.is_file()]
         if subtitles:
             if self._loaded is None:
                 self.noticed.emit("Open a video before adding subtitles")
             else:
                 self.tracks.add_files(subtitles)
-        return [p for p in paths if p not in subtitles]
+        lyrics = [p for p in paths if p.suffix.lower() == ".lrc" and p.is_file()]
+        if lyrics:
+            self.lyricsDropped.emit([str(p) for p in lyrics])
+        return [p for p in paths if p not in subtitles and p not in lyrics]
 
     def _load(self, index: int) -> None:
         self._checkpoint()

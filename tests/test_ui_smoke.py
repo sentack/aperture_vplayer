@@ -92,3 +92,26 @@ def test_resume_prompt_idle_without_offer(ui, app):
     player.acceptResume()
     app.processEvents()
     assert messages(warnings) == []
+
+
+def test_lyrics_save_and_embed(ui, app, tmp_path):
+    from aperture.core.lyrics_tags import read_embedded
+
+    engine, player, warnings = ui
+    lyrics = engine.rootContext().contextProperty("lyrics")
+    song = tmp_path / "Song.mp3"
+    song.write_bytes(bytes(512))
+    player.mediaLoaded.emit(str(song))  # what a real load announces
+    app.processEvents()
+    assert lyrics.property("audioFile") and not lyrics.property("available")
+
+    lyrics.save([{"time": 1000, "text": "first"}, {"time": 3000, "text": "second"}], True)
+    app.processEvents()
+    assert (tmp_path / "Song.lrc").read_text(encoding="utf-8").startswith("[00:01.00]first")
+    assert read_embedded(song).startswith("[00:01.00]first")
+    assert lyrics.property("synced") and lyrics.property("plainText") == "first\nsecond"
+
+    player.mediaLoaded.emit("")
+    app.processEvents()
+    assert not lyrics.property("audioFile")
+    assert messages(warnings) == []

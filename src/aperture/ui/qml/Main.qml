@@ -138,9 +138,21 @@ Window {
         onAccepted: tracks.addSubtitleUrls(selectedFiles)
     }
 
+    FileDialog {
+        id: lyricsDialog
+        title: "Load lyrics"
+        nameFilters: ["Lyrics (*.lrc *.txt)", "All files (*)"]
+        currentFolder: player.mediaFolder
+        onAccepted: lyrics.loadUrls([selectedFile])
+    }
+
     KeyBindings {
         fullscreen: root.fullscreen
-        settingsOpen: root.settingsOpen
+        modalOpen: root.settingsOpen || lyricsEditor.open
+        onModalClosed: {
+            root.settingsOpen = false
+            lyricsEditor.open = false
+        }
         onSettingsToggled: root.toggleSettings()
         onFullscreenToggled: root.toggleFullscreen()
         onOpenRequested: root.chooseFiles(false)
@@ -407,6 +419,17 @@ Window {
             }
         }
 
+        // Audio files show their lyrics where the picture would be, above the title block.
+        LyricsView {
+            anchors {
+                left: parent.left; right: parent.right; top: topBar.bottom; bottom: parent.bottom
+                leftMargin: 32; rightMargin: 32; topMargin: 4; bottomMargin: 240
+            }
+            visible: lyrics.audioFile && !root.mini
+            onLoadRequested: lyricsDialog.open()
+            onEditRequested: lyricsEditor.begin()
+        }
+
         // External SRT/VTT cues; embedded subtitle streams are drawn by VideoOutput itself.
         UiText {
             id: subtitleOverlay
@@ -474,6 +497,8 @@ Window {
             onCloseRequested: root.settingsOpen = false
         }
     }
+
+    LyricsEditor { id: lyricsEditor }
 
     // Bottom-right questions, newest at the bottom, sitting just above the control bar.
     Column {
