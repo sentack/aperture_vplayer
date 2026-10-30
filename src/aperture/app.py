@@ -67,6 +67,9 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     from aperture.preferences import PreferencesController
     from aperture.settings import Settings
     from aperture.theme.controller import ThemeController
+    from aperture.update.controller import UpdateController
+    from aperture.update.install import detect
+    from aperture.build import load_build_info
 
     settings = settings if settings is not None else Settings(data_dir / "settings.json")
     player = PlayerController(History(data_dir / "history.json"), app)
@@ -111,6 +114,9 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     context.setContextProperty("appearance", appearance)
     context.setContextProperty("prefs", prefs)
     context.setContextProperty("keymap", keymap)
+    updates = UpdateController(data_dir, detect(), load_build_info(), app.quit, app)
+    updates.noticed.connect(player.noticed)
+    context.setContextProperty("updates", updates)
     context.setContextProperty("thumbs", thumbnails)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
     return engine, player
@@ -144,6 +150,13 @@ def run(argv: list[str] | None = None) -> int:
     setup_logging(data_dir)
     qInstallMessageHandler(_qt_message)
 
+    from aperture.update.controller import apply_pending, mark_launched
+    from aperture.update.install import detect
+
+    # An update the user chose to install "later" goes in now, before any window opens.
+    if apply_pending(data_dir, detect()):
+        return 0
+
     engine, player = load_ui(app, data_dir, settings=settings)
 
     def restart() -> None:
@@ -158,6 +171,7 @@ def run(argv: list[str] | None = None) -> int:
     if not engine.rootObjects():
         log.critical("could not load the user interface from %s", QML_DIR)
         return 1
+    mark_launched(data_dir)  # an updater waiting on this version can keep it now
 
     # macOS hands Finder "Open With" and Dock drops to the app as FileOpen events, not argv.
     # A multi-file open arrives as one event per file; batch them into a single queue.

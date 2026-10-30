@@ -527,6 +527,7 @@ Window {
     }
 
     SettingsDialog {
+        objectName: "settingsDialog"
         open: root.settingsOpen && !root.mini
         onCloseRequested: root.settingsOpen = false
     }

@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag matching the package version (v0.4.0 for __version__ = "0.4.0") to publish.
+# Push a tag matching the package version (v0.5.0 for __version__ = "0.5.0") to publish.
 # Manual runs build the same artifacts without publishing a release.
 on:
   push:
@@ -52,6 +52,14 @@ jobs:
             exit 1
           fi
           echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      # The About page shows this build's version and release date.
+      - name: Stamp build info
+        shell: bash
+        run: |
+          printf '{"version": "%s", "date": "%s", "commit": "%s"}\n' \
+            "${{ steps.version.outputs.value }}" "$(date -u +%F)" "$GITHUB_SHA" \
+            > src/aperture/resources/build_info.json
 
       # --clean: never reuse a cached or half-written build (the corrupted-DLL failure).
       - run: pyinstaller --clean --noconfirm packaging/aperture.spec
@@ -127,6 +135,10 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+
+      # In-app updates refuse any download that does not match this list.
+      - name: Checksums
+        run: cd dist && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt
 
       - uses: softprops/action-gh-release@v2
         with:

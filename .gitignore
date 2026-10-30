@@ -17,3 +17,5 @@ htmlcov/
 .DS_Store
 *.AppImage
 *.AppDir/
+# Stamped by the release workflow
+src/aperture/resources/build_info.json

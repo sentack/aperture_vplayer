@@ -24,6 +24,7 @@ a = Analysis(
     ],
     hiddenimports=[
         "PySide6.QtMultimedia",
+        "PySide6.QtNetwork",
         "PySide6.QtQml",
         "PySide6.QtQuick",
         "PySide6.QtSvg",
