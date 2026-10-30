@@ -1,10 +1,9 @@
 name: CI
 
-# Only for main: pushes to it and pull requests into it. Work-in-progress branches run
-# nothing until they are proposed for main, which keeps Actions minutes for what ships.
+# Pull requests into main only. A PR runs everything a release does (tests, all three
+# packages, the release checks), so merging and tagging cannot fail later. Pushes, including
+# to main, run nothing; releases are built by release.yml from the tag.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -37,3 +36,27 @@ jobs:
         run: pytest
         env:
           QT_QPA_PLATFORM: offscreen
+
+  # Package every pull request exactly like a release, so a broken installer, AppImage or
+  # disk image fails the PR. The built files can be downloaded from the run for testing.
+  package:
+    needs: test
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      run_tests: false
+      retention_days: 7
+
+  # The release's publish step, minus the upload: same files, same checks, same checksums.
+  release-check:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - run: python3 packaging/check_release.py dist

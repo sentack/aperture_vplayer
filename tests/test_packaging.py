@@ -86,8 +86,9 @@ def test_release_artifacts_are_compressed():
     iss = (PACKAGING / "windows" / "aperture.iss").read_text(encoding="utf-8")
     assert "Compression=lzma2/ultra64" in iss and "SolidCompression=yes" in iss
     appimage = (PACKAGING / "linux" / "build-appimage.sh").read_text(encoding="utf-8")
-    assert "--comp xz" in appimage and "xz -9" in appimage
-    assert "unsquashfs -s" in appimage  # the build fails if the image is not xz-compressed
+    assert "--comp zstd" in appimage and "-Xcompression-level --mksquashfs-opt 22" in appimage
+    assert "xz -9" in appimage  # the tarball
+    assert "unsquashfs -s" in appimage  # the build fails if the image is not zstd-compressed
     assert "-format ULMO" in (PACKAGING / "macos" / "build-dmg.sh").read_text(encoding="utf-8")
 
 
@@ -144,6 +145,67 @@ def test_check_bundle_reports_missing_codecs_and_webengine(tmp_path):
 def test_release_publishes_checksums_and_build_info():
     from aperture.core.release import CHECKSUMS_ASSET
 
-    workflow = (PACKAGING.parent / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    assert f"sha256sum -- * > {CHECKSUMS_ASSET}" in workflow
-    assert "src/aperture/resources/build_info.json" in workflow
+    workflows = PACKAGING.parent / ".github" / "workflows"
+    release = (workflows / "release.yml").read_text(encoding="utf-8")
+    build = (workflows / "build.yml").read_text(encoding="utf-8")
+    assert "packaging/check_release.py dist" in release
+    assert _load("check_release").CHECKSUMS == CHECKSUMS_ASSET
+    assert "src/aperture/resources/build_info.json" in build
+    assert "uses: ./.github/workflows/build.yml" in release
+
+
+def test_pull_requests_build_every_package():
+    import yaml
+
+    workflows = PACKAGING.parent / ".github" / "workflows"
+    ci = yaml.safe_load((workflows / "ci.yml").read_text(encoding="utf-8"))
+    triggers = ci[True]  # YAML 1.1 reads the key `on` as True
+    assert set(triggers) == {"pull_request"}, "CI must not run on pushes"
+    assert triggers["pull_request"]["branches"] == ["main"]
+    assert ci["jobs"]["package"]["uses"] == "./.github/workflows/build.yml"
+    assert ci["jobs"]["release-check"]["needs"] == "package"
+    release = yaml.safe_load((workflows / "release.yml").read_text(encoding="utf-8"))
+    assert set(release[True]["push"]) == {"tags"}
+    build = yaml.safe_load((workflows / "build.yml").read_text(encoding="utf-8"))
+    oses = build["jobs"]["build"]["strategy"]["matrix"]["os"]
+    assert {"windows-latest", "ubuntu-22.04", "macos-15"} <= set(oses)
+
+
+def _load(name):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(name, PACKAGING / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_release_check_accepts_a_complete_release(tmp_path):
+    check_release = _load("check_release")
+    version = check_release.version()
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    for name in check_release.expected_files(version):
+        (dist / name).write_bytes(b"build")
+    notes = tmp_path / "notes.md"
+    notes.write_text(f"# Aperture {version}\n\nWhat's new.\n")
+    assert check_release.check(dist, notes, version) == []
+    sums = check_release.write_checksums(dist).read_text().splitlines()
+    assert len(sums) == 4 and all(len(line.split("  ")[0]) == 64 for line in sums)
+
+
+def test_release_check_reports_missing_files_and_wrong_notes(tmp_path):
+    check_release = _load("check_release")
+    (tmp_path / "Aperture-9.9.9-x86_64.AppImage").write_bytes(b"")
+    notes = tmp_path / "notes.md"
+    notes.write_text("# Aperture 0.0.1\n")
+    problems = check_release.check(tmp_path, notes, "9.9.9")
+    assert "missing or empty: Aperture-9.9.9-x86_64.AppImage" in problems
+    assert "missing or empty: Aperture-9.9.9-macos-arm64.dmg" in problems
+    assert any("must start with '# Aperture 9.9.9'" in p for p in problems)
+
+
+def test_release_notes_match_the_version():
+    check_release = _load("check_release")
+    title = (PACKAGING.parent / "RELEASE_NOTES.md").read_text(encoding="utf-8").splitlines()[0]
+    assert title == f"# Aperture {check_release.version()}"

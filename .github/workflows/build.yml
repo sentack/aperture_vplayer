@@ -1,0 +1,134 @@
+name: Build
+
+# Builds and packages Aperture for Windows, Linux and macOS: the installer, AppImage,
+# tarball and disk image. Called by release.yml (to publish) and by ci.yml for every pull
+# request into main, so packaging problems show up in the PR instead of at release time.
+on:
+  workflow_call:
+    inputs:
+      run_tests:
+        description: Run the test suite first (the caller may already have)
+        type: boolean
+        default: true
+      retention_days:
+        description: How long to keep the built files
+        type: number
+        default: 90
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.04's older glibc keeps the AppImage runnable on more distributions.
+        # macos-15 runs on Apple Silicon, so the .dmg targets arm64 Macs (macos-14 retires 2026-11-02).
+        os: [windows-latest, ubuntu-22.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    env:
+      # Signing steps run only once the Developer ID secrets exist.
+      HAS_MACOS_CERT: ${{ secrets.MACOS_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Qt runtime libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libfontconfig1 libglib2.0-0 libdbus-1-3 libpulse0 \
+            ffmpeg  # encodes the sample clips for tests/test_codecs.py
+
+      - run: pip install ".[dev,build]"
+
+      - run: pytest
+        if: inputs.run_tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          version="$(python -c 'import aperture; print(aperture.__version__)')"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "tag $GITHUB_REF_NAME does not match package version $version" >&2
+            exit 1
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      # The About page shows this build's version and release date.
+      - name: Stamp build info
+        shell: bash
+        run: |
+          printf '{"version": "%s", "date": "%s", "commit": "%s"}\n' \
+            "${{ steps.version.outputs.value }}" "$(date -u +%F)" "$GITHUB_SHA" \
+            > src/aperture/resources/build_info.json
+
+      # --clean: never reuse a cached or half-written build (the corrupted-DLL failure).
+      - run: pyinstaller --clean --noconfirm packaging/aperture.spec
+
+      # Codecs ship inside Qt's FFmpeg backend; fail here, not on a user's black screen.
+      - name: Check bundled video backend
+        run: python packaging/check_bundle.py dist/aperture
+
+      - name: Windows installer
+        if: runner.os == 'Windows'
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.value }} packaging\windows\aperture.iss
+
+      - name: Linux AppImage
+        if: runner.os == 'Linux'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          sudo apt-get install -y --no-install-recommends squashfs-tools  # to verify compression
+          curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          APPIMAGETOOL="$PWD/appimagetool" packaging/linux/build-appimage.sh "${{ steps.version.outputs.value }}"
+
+      - name: macOS signing keychain
+        if: runner.os == 'macOS' && env.HAS_MACOS_CERT == 'true'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password="$(openssl rand -hex 16)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/certificate.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain"
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+      - name: macOS disk image
+        if: runner.os == 'macOS'
+        env:
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: packaging/macos/build-dmg.sh "${{ steps.version.outputs.value }}"
+
+      - name: Artifact sizes
+        shell: bash
+        run: ls -lh dist/*.exe dist/*.AppImage dist/*.tar.xz dist/*.dmg 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aperture-${{ runner.os }}
+          path: |
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.tar.xz
+            dist/*.dmg
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention_days }}
