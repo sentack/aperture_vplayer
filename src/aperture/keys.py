@@ -25,7 +25,9 @@ class KeymapController(QObject):
     changed = Signal()
     capturingChanged = Signal()
 
-    def __init__(self, settings: Settings, mac: bool = False, parent: QObject | None = None) -> None:
+    def __init__(
+        self, settings: Settings, mac: bool = False, parent: QObject | None = None
+    ) -> None:
         super().__init__(parent)
         self._settings = settings
         self._mac = mac

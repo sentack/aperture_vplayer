@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -28,11 +29,31 @@ def _qt_message(mode, context, message: str) -> None:
     logging.getLogger("qt").log(levels.get(mode, logging.WARNING), "%s", message)
 
 
-def load_ui(app, data_dir: Path, on_warnings=None):
+def apply_decoder_choice(hardware_decoding: bool) -> None:
+    """Software-only decoding when hardware decoding is off. Must run before Qt Multimedia starts.
+
+    Qt's FFmpeg backend reads these once: "none" matches no hardware device type, and
+    turning off GPU texture conversion fixes the "sound but a black picture" failure some
+    VP8/VP9 (WebM) streams show with hardware decoders. A variable the user already set wins.
+    """
+    if not hardware_decoding:
+        os.environ.setdefault("QT_FFMPEG_DECODING_HW_DEVICE_TYPES", "none")
+        os.environ.setdefault("QT_DISABLE_HW_TEXTURES_CONVERSION", "1")
+
+
+def restart_command() -> tuple[str, list[str]]:
+    """Program and arguments that start Aperture again, frozen or from source."""
+    if getattr(sys, "frozen", False):
+        return sys.executable, []
+    return sys.executable, ["-m", "aperture"]
+
+
+def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     """Create the controllers, expose them to QML and load the main window.
 
     Returns `(engine, player)`; the engine has no root objects if QML failed to load.
     `on_warnings` receives lists of QQmlError, connected before loading so none are missed.
+    `settings` is read from `data_dir` when not given.
     """
     from PySide6.QtCore import QUrl
     from PySide6.QtQml import QQmlApplicationEngine
@@ -47,7 +68,7 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     from aperture.settings import Settings
     from aperture.theme.controller import ThemeController
 
-    settings = Settings(data_dir / "settings.json")
+    settings = settings if settings is not None else Settings(data_dir / "settings.json")
     player = PlayerController(History(data_dir / "history.json"), app)
     appearance = ThemeController(settings, app)
     prefs = PreferencesController(settings, app)
@@ -96,21 +117,44 @@ def load_ui(app, data_dir: Path, on_warnings=None):
 
 
 def run(argv: list[str] | None = None) -> int:
-    from PySide6.QtCore import QEvent, QObject, QStandardPaths, QTimer, qInstallMessageHandler
+    from PySide6.QtCore import (
+        QEvent,
+        QObject,
+        QProcess,
+        QStandardPaths,
+        QTimer,
+        qInstallMessageHandler,
+    )
     from PySide6.QtGui import QGuiApplication, QIcon
 
     from aperture.logs import setup_logging
+    from aperture.settings import Settings
+
+    # Names first: they decide the data folder, and settings decide decoding before Qt starts.
+    QGuiApplication.setApplicationName("Aperture")
+    app_data = QStandardPaths.StandardLocation.AppDataLocation
+    data_dir = Path(QStandardPaths.writableLocation(app_data))
+    settings = Settings(data_dir / "settings.json")
+    apply_decoder_choice(settings.hardware_decoding)
 
     app = QGuiApplication(sys.argv if argv is None else argv)
-    app.setApplicationName("Aperture")
     app.setDesktopFileName(DESKTOP_ID)
     app.setWindowIcon(QIcon(str(ICON_PATH)))
 
-    data_dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
     setup_logging(data_dir)
     qInstallMessageHandler(_qt_message)
 
-    engine, player = load_ui(app, data_dir)
+    engine, player = load_ui(app, data_dir, settings=settings)
+
+    def restart() -> None:
+        player.shutdown()
+        program, arguments = restart_command()
+        if QProcess.startDetached(program, arguments):
+            app.quit()
+        else:
+            player.noticed.emit("Couldn't restart Aperture. Close and open it again.")
+
+    engine.rootContext().contextProperty("prefs").restartRequested.connect(restart)
     if not engine.rootObjects():
         log.critical("could not load the user interface from %s", QML_DIR)
         return 1

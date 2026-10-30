@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag matching the package version (v0.3.0 for __version__ = "0.3.0") to publish.
+# Push a tag matching the package version (v0.4.0 for __version__ = "0.4.0") to publish.
 # Manual runs build the same artifacts without publishing a release.
 on:
   push:
@@ -55,6 +55,10 @@ jobs:
 
       # --clean: never reuse a cached or half-written build (the corrupted-DLL failure).
       - run: pyinstaller --clean --noconfirm packaging/aperture.spec
+
+      # Codecs ship inside Qt's FFmpeg backend; fail here, not on a user's black screen.
+      - name: Check bundled video backend
+        run: python packaging/check_bundle.py dist/aperture
 
       - name: Windows installer
         if: runner.os == 'Windows'

@@ -60,6 +60,13 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 - **Subtitles:** on or off by default, text size
 - **Keyboard shortcuts:** the full list
 
+**Quick options and precise control**
+- Right-click the video (or Shift+F10 / the Menu key) for play, open file or URL, A–B loop, screenshot, speed, audio and subtitle tracks, fullscreen and settings
+- A–B loop: press L at the start, again at the end, a third time to stop looping
+- Step one frame at a time with `.` and `,`
+- Screenshots (S) go to your Pictures folder, under Aperture
+- Open network streams and direct links: http(s), HLS `.m3u8`, RTSP, RTMP…
+
 **Picking up where you left off**
 - Reopening a file you stopped partway through, including from Recent, asks "Resume from 14:22?" in the corner
 - Aperture offers, at most once every 6 hours, to become your default video player
@@ -68,23 +75,38 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 
 | Key | Action |
 |---|---|
-| Space, K | Play / pause |
-| ← / → | Seek 5 s |
-| J / L | Seek 10 s |
-| Shift+← / Shift+→ | Seek 30 s |
-| Home | Back to start |
-| ↑ / ↓ | Volume ±5% |
-| M | Mute |
-| N / P | Next / previous |
-| [ / ] | Slower / faster |
-| = | Normal speed |
-| C | Subtitles on / off |
-| A | Next audio track |
-| I | Mini player |
-| F, F11 | Fullscreen |
-| Esc | Leave fullscreen / close settings |
-| Ctrl+O | Open files |
-| Ctrl+, | Settings |
+| `Space` | Play / pause |
+| `Left` | Back 5 s |
+| `Right` | Forward 5 s |
+| `Ctrl+Left` | Back 10 s |
+| `Ctrl+Right` | Forward 10 s |
+| `Shift+Left` | Back 30 s |
+| `Shift+Right` | Forward 30 s |
+| `Home` | Back to start |
+| `,` | Previous frame |
+| `.` | Next frame |
+| `L` | A–B loop: set A, set B, clear |
+| `[` | Slower |
+| `]` | Faster |
+| `=` | Normal speed |
+| `Up` | Volume up |
+| `Down` | Volume down |
+| `M` | Mute |
+| `C` | Subtitles on / off |
+| `A` | Next audio track |
+| `N` | Next in playlist |
+| `P` | Previous in playlist |
+| `F` | Fullscreen |
+| `I` | Mini player |
+| `S` | Screenshot |
+| `Ctrl+O` | Open files |
+| `Ctrl+U` | Open URL |
+| `Ctrl+,` | Settings |
+| `Shift+F10` | Quick options menu |
+| `Esc` | Close dialog / leave fullscreen (fixed) |
+| `Menu` | Quick options menu (fixed) |
+
+Every key except the fixed ones can be changed in **Settings → Keyboard shortcuts**: click a key, press the new combination. Each key does one thing; system shortcuts such as Alt+F4 are refused.
 
 On macOS, Ctrl means ⌘.
 
@@ -120,9 +142,9 @@ Package locally:
 ```sh
 pip install -e ".[build]"
 pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/ (+ dist/Aperture.app on macOS)
-iscc /DAppVersion=0.3.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
-packaging/linux/build-appimage.sh 0.3.0                     # Linux, needs appimagetool
-packaging/macos/build-dmg.sh 0.3.0                          # macOS, needs Xcode command-line tools
+iscc /DAppVersion=0.4.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
+packaging/linux/build-appimage.sh 0.4.0                     # Linux, needs appimagetool
+packaging/macos/build-dmg.sh 0.4.0                          # macOS, needs Xcode command-line tools
 ```
 
 `build-dmg.sh` ad-hoc signs by default. Set `MACOS_SIGN_IDENTITY` to sign with a Developer ID certificate, and `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` to notarize.
@@ -132,7 +154,7 @@ The icon is generated from code: `python packaging/make_icons.py`.
 ## Releasing
 
 1. Bump `__version__` in `src/aperture/__init__.py`.
-2. Tag and push: `git tag v0.3.0 && git push origin v0.3.0`.
+2. Tag and push: `git tag v0.4.0 && git push origin v0.4.0`.
 
 The release workflow tests, builds the Windows installer, the Linux AppImage and tarball, and the macOS disk image, then publishes them to a GitHub release.
 

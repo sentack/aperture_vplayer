@@ -307,6 +307,29 @@ Modal {
                 }
 
                 Section {
+                    title: "Decoding"
+
+                    Row2 {
+                        text: "Hardware-accelerated decoding"
+
+                        ToggleSwitch {
+                            label: "Hardware-accelerated decoding"
+                            checked: prefs.hardwareDecoding
+                            onToggled: checked => prefs.hardwareDecoding = checked
+                        }
+                    }
+
+                    Note { text: "Uses the graphics card to decode video. Turn it off if a video plays sound over a black picture. Applies after a restart." }
+
+                    PillButton {
+                        text: "Restart now"
+                        primary: true
+                        visible: prefs.restartNeeded
+                        onClicked: prefs.restart()
+                    }
+                }
+
+                Section {
                     title: "Saved positions"
 
                     UiText {

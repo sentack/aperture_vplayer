@@ -19,3 +19,9 @@ def test_every_action_is_bound_once():
 
 def test_only_fixed_keys_are_hard_coded():
     assert sorted(re.findall(r'sequence: "([^"]+)"', bindings())) == ["Escape", "Menu"]
+
+
+def test_readme_lists_every_default():
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
+    for action in ACTIONS:
+        assert f"| `{action.default}` | {action.label} |" in readme

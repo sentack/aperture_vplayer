@@ -88,3 +88,53 @@ def test_release_artifacts_are_compressed():
     appimage = (PACKAGING / "linux" / "build-appimage.sh").read_text(encoding="utf-8")
     assert "--comp zstd" in appimage and "xz -9" in appimage
     assert "-format ULMO" in (PACKAGING / "macos" / "build-dmg.sh").read_text(encoding="utf-8")
+
+
+def _load_check_bundle():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("check_bundle", PACKAGING / "check_bundle.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _fake_bundle(root, windows=False):
+    files = [
+        "_internal/PySide6/qml/QtMultimedia/qmldir",
+        "_internal/PySide6/qml/QtQuick/Controls/qmldir",
+        "_internal/PySide6/qml/QtQuick/Dialogs/qmldir",
+        "_internal/PySide6/qml/QtQuick/Shapes/qmldir",
+        "_internal/aperture/ui/qml/Main.qml",
+    ]
+    if windows:
+        files += ["_internal/PySide6/plugins/multimedia/ffmpegmediaplugin.dll"]
+        files += [f"_internal/PySide6/{lib}-61.dll" for lib in ("avcodec", "avformat", "avutil")]
+        files += ["_internal/PySide6/swresample-5.dll", "_internal/PySide6/swscale-8.dll"]
+    else:
+        files += ["_internal/PySide6/Qt/plugins/multimedia/libffmpegmediaplugin.so"]
+        lib = "_internal/PySide6/Qt/lib"
+        files += [f"{lib}/lib{name}.so.61" for name in ("avcodec", "avformat", "avutil")]
+        files += [f"{lib}/libswresample.so.5", f"{lib}/libswscale.so.8"]
+    for name in files:
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).touch()
+
+
+def test_check_bundle_accepts_complete_builds(tmp_path):
+    check = _load_check_bundle().check
+    _fake_bundle(tmp_path / "linux")
+    _fake_bundle(tmp_path / "windows", windows=True)
+    assert check(tmp_path / "linux") == []
+    assert check(tmp_path / "windows") == []
+
+
+def test_check_bundle_reports_missing_codecs_and_webengine(tmp_path):
+    check = _load_check_bundle().check
+    _fake_bundle(tmp_path)
+    (tmp_path / "_internal/PySide6/Qt/lib/libavcodec.so.61").unlink()
+    (tmp_path / "_internal/PySide6/Qt/lib/libQt6WebEngineCore.so.6").touch()
+    problems = check(tmp_path)
+    assert "missing: libavcodec (decoders)" in problems
+    assert any(p.startswith("unexpected: Qt WebEngine") for p in problems)
+    assert check(tmp_path / "nope") == [f"{tmp_path / 'nope'} is not a directory"]

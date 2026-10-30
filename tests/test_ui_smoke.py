@@ -180,3 +180,14 @@ def test_quick_menu_and_url_dialog_open_cleanly(ui, app):
     dialog.setProperty("open", False)
     app.processEvents()
     assert messages(warnings) == []
+
+
+def test_hardware_decoding_toggle_flags_restart(ui, app):
+    engine, _, warnings = ui
+    prefs = engine.rootContext().contextProperty("prefs")
+    assert prefs.property("restartNeeded") is False
+    prefs.setProperty("hardwareDecoding", not prefs.property("hardwareDecoding"))
+    assert prefs.property("restartNeeded") is True
+    prefs.setProperty("hardwareDecoding", not prefs.property("hardwareDecoding"))
+    assert prefs.property("restartNeeded") is False
+    assert messages(warnings) == []
