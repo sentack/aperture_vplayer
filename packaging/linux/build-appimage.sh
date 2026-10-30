@@ -37,12 +37,12 @@ exec "$here/usr/bin/aperture" "$@"
 EOF
 chmod +x "$appdir/AppRun"
 
-# Compression: xz for the AppImage's squashfs (smallest download; the BCJ x86 filter helps
-# on the many shared libraries), xz -9 for the tarball. xz costs a little extra time on
-# first launch, while the image is mounted.
+# Compression: zstd at its strongest level (22) for the AppImage's squashfs, xz -9 for the
+# tarball. Current appimagetool and the AppImage runtime support zstd only; xz is refused.
+# Level 22 costs build time, not launch time: zstd decompresses equally fast at any level.
 appimage="$dist/Aperture-$version-x86_64.AppImage"
-ARCH=x86_64 "$tool" --no-appstream --comp xz \
-    --mksquashfs-opt -Xbcj --mksquashfs-opt x86 \
+ARCH=x86_64 "$tool" --no-appstream --comp zstd \
+    --mksquashfs-opt -Xcompression-level --mksquashfs-opt 22 \
     "$appdir" "$appimage"
 tar -C "$dist" -cf - aperture | xz -9 -T0 > "$dist/Aperture-$version-linux-x64.tar.xz"
 
@@ -50,7 +50,10 @@ tar -C "$dist" -cf - aperture | xz -9 -T0 > "$dist/Aperture-$version-linux-x64.t
 if command -v unsquashfs >/dev/null; then
     offset="$("$appimage" --appimage-offset)"
     compression="$(unsquashfs -s -o "$offset" "$appimage" | sed -n 's/^Compression //p')"
-    [[ "$compression" == xz ]] || { echo "AppImage compression is '$compression', expected xz" >&2; exit 1; }
+    if [[ "$compression" != zstd ]]; then
+        echo "AppImage compression is '$compression', expected zstd" >&2
+        exit 1
+    fi
     echo "AppImage: $(du -sh "$appdir" | cut -f1) unpacked -> $(du -h "$appimage" | cut -f1), $compression"
 fi
 

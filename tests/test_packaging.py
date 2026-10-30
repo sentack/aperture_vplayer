@@ -86,8 +86,9 @@ def test_release_artifacts_are_compressed():
     iss = (PACKAGING / "windows" / "aperture.iss").read_text(encoding="utf-8")
     assert "Compression=lzma2/ultra64" in iss and "SolidCompression=yes" in iss
     appimage = (PACKAGING / "linux" / "build-appimage.sh").read_text(encoding="utf-8")
-    assert "--comp xz" in appimage and "xz -9" in appimage
-    assert "unsquashfs -s" in appimage  # the build fails if the image is not xz-compressed
+    assert "--comp zstd" in appimage and "-Xcompression-level --mksquashfs-opt 22" in appimage
+    assert "xz -9" in appimage  # the tarball
+    assert "unsquashfs -s" in appimage  # the build fails if the image is not zstd-compressed
     assert "-format ULMO" in (PACKAGING / "macos" / "build-dmg.sh").read_text(encoding="utf-8")
 
 
@@ -144,6 +145,22 @@ def test_check_bundle_reports_missing_codecs_and_webengine(tmp_path):
 def test_release_publishes_checksums_and_build_info():
     from aperture.core.release import CHECKSUMS_ASSET
 
-    workflow = (PACKAGING.parent / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    assert f"sha256sum -- * > {CHECKSUMS_ASSET}" in workflow
-    assert "src/aperture/resources/build_info.json" in workflow
+    workflows = PACKAGING.parent / ".github" / "workflows"
+    release = (workflows / "release.yml").read_text(encoding="utf-8")
+    build = (workflows / "build.yml").read_text(encoding="utf-8")
+    assert f"sha256sum -- * > {CHECKSUMS_ASSET}" in release
+    assert "src/aperture/resources/build_info.json" in build
+    assert "uses: ./.github/workflows/build.yml" in release
+
+
+def test_pull_requests_build_every_package():
+    import yaml
+
+    workflows = PACKAGING.parent / ".github" / "workflows"
+    ci = yaml.safe_load((workflows / "ci.yml").read_text(encoding="utf-8"))
+    package = ci["jobs"]["package"]
+    assert package["uses"] == "./.github/workflows/build.yml"
+    assert package["if"] == "github.event_name == 'pull_request'"
+    build = yaml.safe_load((workflows / "build.yml").read_text(encoding="utf-8"))
+    oses = build["jobs"]["build"]["strategy"]["matrix"]["os"]
+    assert {"windows-latest", "ubuntu-22.04", "macos-15"} <= set(oses)

@@ -37,3 +37,14 @@ jobs:
         run: pytest
         env:
           QT_QPA_PLATFORM: offscreen
+
+  # Package every pull request exactly like a release, so a broken installer, AppImage or
+  # disk image fails the PR. The built files can be downloaded from the run for testing.
+  package:
+    if: github.event_name == 'pull_request'
+    needs: test
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      run_tests: false
+      retention_days: 7

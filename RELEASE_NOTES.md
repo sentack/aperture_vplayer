@@ -27,7 +27,7 @@ For quiet recordings: the options menu offers **125%, 150% or 200%**. Loud passa
 If Aperture is your default video player but double-clicking a video still opened an older AppImage, start the new AppImage once: Aperture moves the default over to itself, and your videos open in the new version from then on. It never switches you back to an older copy.
 
 ### Smaller Linux download
-The AppImage is now compressed with xz, so it downloads faster, including through in-app updates. The first launch can take a moment longer while it unpacks.
+The AppImage is now packed at the strongest compression setting, so it downloads faster, including through in-app updates.
 
 ## Codecs
 H.264, HEVC (H.265), VP8 and VP9 video are confirmed to play before every release. **AV1** plays when your graphics hardware decodes AV1 (most graphics cards and Apple chips from roughly 2021 onward). On older hardware, AV1 videos may not show a picture.
