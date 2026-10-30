@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wrap the PyInstaller build (dist/aperture) into a compressed AppImage and tarball.
 #
-#   packaging/linux/build-appimage.sh 0.5.0
+#   packaging/linux/build-appimage.sh 0.6.0
 #
 # Needs appimagetool on PATH or in $APPIMAGETOOL. Without FUSE (containers, CI),
 # export APPIMAGE_EXTRACT_AND_RUN=1 first.
@@ -37,11 +37,21 @@ exec "$here/usr/bin/aperture" "$@"
 EOF
 chmod +x "$appdir/AppRun"
 
-# Release compression (v0.5.0+): zstd at level 19 for the AppImage's squashfs (small, still
-# fast to start), xz -9 for the tarball.
-ARCH=x86_64 "$tool" --no-appstream --comp zstd \
-    --mksquashfs-opt -Xcompression-level --mksquashfs-opt 19 \
-    "$appdir" "$dist/Aperture-$version-x86_64.AppImage"
+# Compression: xz for the AppImage's squashfs (smallest download; the BCJ x86 filter helps
+# on the many shared libraries), xz -9 for the tarball. xz costs a little extra time on
+# first launch, while the image is mounted.
+appimage="$dist/Aperture-$version-x86_64.AppImage"
+ARCH=x86_64 "$tool" --no-appstream --comp xz \
+    --mksquashfs-opt -Xbcj --mksquashfs-opt x86 \
+    "$appdir" "$appimage"
 tar -C "$dist" -cf - aperture | xz -9 -T0 > "$dist/Aperture-$version-linux-x64.tar.xz"
 
-echo "built $dist/Aperture-$version-x86_64.AppImage"
+# Prove the image really is compressed, and report what it saved.
+if command -v unsquashfs >/dev/null; then
+    offset="$("$appimage" --appimage-offset)"
+    compression="$(unsquashfs -s -o "$offset" "$appimage" | sed -n 's/^Compression //p')"
+    [[ "$compression" == xz ]] || { echo "AppImage compression is '$compression', expected xz" >&2; exit 1; }
+    echo "AppImage: $(du -sh "$appdir" | cut -f1) unpacked -> $(du -h "$appimage" | cut -f1), $compression"
+fi
+
+echo "built $appimage"

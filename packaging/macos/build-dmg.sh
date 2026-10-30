@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sign dist/Aperture.app, wrap it in a .dmg, and notarize it when credentials are present.
 #
-#   packaging/macos/build-dmg.sh 0.5.0
+#   packaging/macos/build-dmg.sh 0.6.0
 #
 # Signing and notarization are opt-in through the environment:
 #   MACOS_SIGN_IDENTITY   "Developer ID Application: Name (TEAMID)", already in a keychain.
@@ -34,7 +34,7 @@ trap 'rm -rf "$staging"' EXIT
 ditto "$app" "$staging/Aperture.app"
 ln -s /Applications "$staging/Applications"
 rm -f "$dmg"
-# Release compression (v0.5.0+): ULMO is LZMA, the smallest disk image format (macOS 10.15+).
+# Release compression (v0.6.0+): ULMO is LZMA, the smallest disk image format (macOS 10.15+).
 hdiutil create -volname "Aperture $version" -srcfolder "$staging" -ov -format ULMO "$dmg"
 
 if [[ "$identity" != "-" ]]; then

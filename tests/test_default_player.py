@@ -97,3 +97,67 @@ def test_settings_default_prompt_fields(tmp_path):
     assert loaded.ask_default is False and loaded.ask_default_last == 1234.5
     loaded.reset()
     assert loaded.ask_default is True and loaded.ask_default_last == 1234.5
+
+
+
+# --- keeping the default on the newest AppImage --------------------------------------------
+
+
+@pytest.fixture
+def xdg(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
+    monkeypatch.setenv("XDG_DATA_DIRS", str(tmp_path / "system"))
+    icon = tmp_path / "icon.svg"
+    icon.write_text("<svg/>")
+    return tmp_path, icon
+
+
+def entry_for(tmp_path, appimage):
+    default_player.install_appimage_entry(appimage, tmp_path / "icon.svg")
+    return default_player.entry_target()
+
+
+def test_appimage_version_from_release_names():
+    assert default_player.appimage_version(Path("Aperture-0.3.0-x86_64.AppImage")) == "0.3.0"
+    beta = Path("Aperture-1.2.0-beta.1-x86_64.AppImage")
+    assert default_player.appimage_version(beta) == "1.2.0-beta.1"
+    assert default_player.appimage_version(Path("Aperture.AppImage")) is None
+
+
+def test_default_moves_from_old_appimage_to_this_one(xdg):
+    tmp_path, icon = xdg
+    old = tmp_path / "Aperture-0.3.0-x86_64.AppImage"
+    new = tmp_path / "Aperture-0.6.0-x86_64.AppImage"
+    old.touch()
+    assert entry_for(tmp_path, old) == old
+    run = FakeRun(default_player.DESKTOP_FILE)
+
+    assert default_player.refresh_default_appimage(new, "0.6.0", icon, run) == old
+    assert default_player.entry_target() == new
+
+
+def test_missing_old_appimage_is_replaced(xdg):
+    tmp_path, icon = xdg
+    entry_for(tmp_path, tmp_path / "deleted.AppImage")
+    run = FakeRun(default_player.DESKTOP_FILE)
+    new = tmp_path / "Aperture.AppImage"
+    assert default_player.refresh_default_appimage(new, "0.6.0", icon, run) is not None
+    assert default_player.entry_target() == new
+
+
+@pytest.mark.parametrize(
+    ("old_name", "default"),
+    [
+        ("Aperture-0.9.0-x86_64.AppImage", default_player.DESKTOP_FILE),  # the default is newer
+        ("Aperture.AppImage", default_player.DESKTOP_FILE),  # version unknown: leave it
+        ("Aperture-0.3.0-x86_64.AppImage", "vlc.desktop"),  # Aperture isn't the default
+    ],
+)
+def test_default_is_left_alone(xdg, old_name, default):
+    tmp_path, icon = xdg
+    old = tmp_path / old_name
+    old.touch()
+    entry_for(tmp_path, old)
+    new = tmp_path / "Aperture-0.6.0-x86_64.AppImage"
+    assert default_player.refresh_default_appimage(new, "0.6.0", icon, FakeRun(default)) is None
+    assert default_player.entry_target() == old

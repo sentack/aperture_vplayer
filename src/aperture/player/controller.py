@@ -21,6 +21,7 @@ from aperture.core import (
     format_time,
     step_rate,
 )
+from aperture.core.chapters import Chapter, chapter_at, read_chapters
 from aperture.core.media import (
     display_name,
     display_stem,
@@ -31,6 +32,7 @@ from aperture.core.media import (
     parse_stream_url,
     screenshot_name,
 )
+from aperture.player.boost import AudioBoost, make_capture
 from aperture.player.tracks import TrackSelector, is_subtitle
 from aperture.player.urls import to_paths
 
@@ -77,6 +79,10 @@ class PlayerController(QObject):
     # Dropped or picked .lrc files, for the lyrics controller.
     lyricsDropped = Signal(list)
     loopChanged = Signal()
+    chaptersChanged = Signal()
+    chapterChanged = Signal()
+    boostChanged = Signal()
+    videoAspectChanged = Signal()
     hasVideoChanged = Signal()
     resumeOfferChanged = Signal()
 
@@ -92,11 +98,17 @@ class PlayerController(QObject):
         self._loop_a = -1  # A–B loop bounds in ms; -1 while unset
         self._loop_b = -1
         self._sink = None  # the VideoOutput's QVideoSink, for screenshots
+        self._chapters: list[Chapter] = []
+        self._chapter = -1
+        self._aspect = 0.0
         # What to do with a saved position: ask, resume silently, or always start over.
         self.resume_mode = "ask"
         self._error_title = ""
         self._error = ""
 
+        # The boost's capture object first: it must be destroyed before the player (see
+        # make_capture), and children are destroyed in creation order.
+        capture = make_capture(self)
         self._audio = QAudioOutput(self)
         self._player = QMediaPlayer(self)
         self._player.setAudioOutput(self._audio)
@@ -117,6 +129,9 @@ class PlayerController(QObject):
         self._player.durationChanged.connect(lambda _: self.durationChanged.emit())
         self._player.seekableChanged.connect(self._on_seekable)
         self._player.hasVideoChanged.connect(lambda _: self.hasVideoChanged.emit())
+        self._player.metaDataChanged.connect(self._on_metadata)
+        self.boost = AudioBoost(self._player, self._audio, capture, self)
+        self.boost.unavailable.connect(self.noticed)
         self._player.playbackRateChanged.connect(lambda _: self.rateChanged.emit())
         self._player.mediaStatusChanged.connect(self._on_media_status)
         self._player.errorOccurred.connect(self._on_error)
@@ -159,6 +174,68 @@ class PlayerController(QObject):
     @Property(bool, notify=mutedChanged)
     def muted(self) -> bool:
         return self._audio.isMuted()
+
+    def _get_boost(self) -> float:
+        return self.boost.gain
+
+    def _set_boost(self, value: float) -> None:
+        if value != self.boost.gain and self.boost.set_gain(value):
+            self.boostChanged.emit()
+            self.noticed.emit(f"Audio boost {round(self.boost.gain * 100)}%")
+
+    audioBoost = Property(float, _get_boost, _set_boost, notify=boostChanged)
+
+    @Property(list, constant=True)
+    def boostLevels(self) -> list[float]:
+        return [1.0, 1.25, 1.5, 2.0]
+
+    @Property(float, notify=videoAspectChanged)
+    def videoAspect(self) -> float:
+        """Width / height of the picture, 0 until the file reports its resolution."""
+        return self._aspect
+
+    # --- chapters ----------------------------------------------------------
+
+    @Property(list, notify=chaptersChanged)
+    def chapters(self) -> list[dict[str, object]]:
+        return [
+            {"time": c.start_ms, "title": c.title or f"Chapter {i + 1}"}
+            for i, c in enumerate(self._chapters)
+        ]
+
+    @Property(int, notify=chapterChanged)
+    def currentChapter(self) -> int:
+        return self._chapter
+
+    @Slot(int)
+    def seekChapter(self, index: int) -> None:
+        if 0 <= index < len(self._chapters):
+            self.seek(self._chapters[index].start_ms)
+            title = self._chapters[index].title or f"Chapter {index + 1}"
+            self.noticed.emit(f"{index + 1}/{len(self._chapters)} · {title}")
+
+    @Slot()
+    def nextChapter(self) -> None:
+        if not self._chapters:
+            self.noticed.emit("This file has no chapters")
+            return
+        index = chapter_at(self._chapters, self._player.position()) + 1
+        if index < len(self._chapters):
+            self.seekChapter(index)
+        else:
+            self.noticed.emit("Already in the last chapter")
+
+    @Slot()
+    def previousChapter(self) -> None:
+        """Back to this chapter's start, or to the previous one if just past the start."""
+        if not self._chapters:
+            self.noticed.emit("This file has no chapters")
+            return
+        position = self._player.position()
+        index = chapter_at(self._chapters, position)
+        if index > 0 and position - self._chapters[index].start_ms < RESTART_THRESHOLD_MS:
+            index -= 1
+        self.seekChapter(max(index, 0))
 
     @Property(str, notify=errorChanged)
     def errorTitle(self) -> str:
@@ -566,6 +643,7 @@ class PlayerController(QObject):
         self._player.setSource(QUrl(path) if is_url(path) else QUrl.fromLocalFile(str(path)))
         self._player.setPlaybackRate(self._rate)
         self.tracks.reset(None if is_url(path) else path)
+        self._set_chapters([] if is_url(path) else read_chapters(path))
         self.mediaLoaded.emit(str(path))
         self._player.play()
         self._history.save()
@@ -577,6 +655,7 @@ class PlayerController(QObject):
         self._loaded = None
         self._pending_resume = None
         self._take_offer()
+        self._set_chapters([])
         self._player.stop()
         self._player.setSource(QUrl())
         self.tracks.reset(None)
@@ -612,7 +691,28 @@ class PlayerController(QObject):
             self._last_position = position
         if self._loop_b >= 0 and position >= self._loop_b:
             self._player.setPosition(self._loop_a)
+        if self._chapters:
+            chapter = chapter_at(self._chapters, position)
+            if chapter != self._chapter:
+                self._chapter = chapter
+                self.chapterChanged.emit()
         self.positionChanged.emit()
+
+    def _set_chapters(self, chapters: list[Chapter]) -> None:
+        self._chapters = chapters
+        self._chapter = -1
+        self.chaptersChanged.emit()
+        self.chapterChanged.emit()
+
+    def _on_metadata(self) -> None:
+        size = self._player.metaData().value(QMediaMetaData.Key.Resolution)
+        try:
+            aspect = size.width() / size.height() if size and size.height() > 0 else 0.0
+        except AttributeError:
+            aspect = 0.0
+        if aspect != self._aspect:
+            self._aspect = aspect
+            self.videoAspectChanged.emit()
 
     def _apply_resume(self) -> None:
         target = self._pending_resume

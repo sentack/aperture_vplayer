@@ -7,8 +7,18 @@ Rectangle {
 
     property int position: 0
     readonly property bool hasFrame: thumbs.source !== "" && frame.status === Image.Ready
+    // Title of the chapter under the pointer, "" for files without chapters.
+    readonly property string chapter: {
+        let title = ""
+        for (const c of player.chapters) {
+            if (c.time > position)
+                break
+            title = c.title
+        }
+        return title
+    }
 
-    width: hasFrame ? frame.width + 8 : time.implicitWidth + 24
+    width: hasFrame ? frame.width + 8 : Math.min(260, time.implicitWidth + 24)
     height: (hasFrame ? frame.height + 4 : 0) + 30
     radius: 12
     color: theme.popover_bg
@@ -33,10 +43,12 @@ Rectangle {
     UiText {
         id: time
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 7 }
-        text: player.formatTime(preview.position)
+        width: Math.min(implicitWidth, preview.width - 16)
+        text: preview.chapter ? `${preview.chapter} · ${player.formatTime(preview.position)}`
+                              : player.formatTime(preview.position)
         font.weight: Font.DemiBold
         font.features: ({ "tnum": 1 })
         color: theme.text_primary
-        elide: Text.ElideNone
+        elide: Text.ElideMiddle
     }
 }

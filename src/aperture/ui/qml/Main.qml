@@ -37,7 +37,8 @@ Window {
         settingsOpen = !settingsOpen
     }
 
-    // Mini player: compact always-on-top window. The full window's geometry is kept to restore it.
+    // Picture-in-picture: a small always-on-top window sized to the video. The full window's
+    // geometry is kept to restore it.
     property bool mini: false
     property rect fullGeometry
     property bool fullWasMaximized: false
@@ -66,8 +67,10 @@ Window {
         playlistOpen = false
         settingsOpen = false
         mini = true
+        // Size the floating window to the picture, so there are no black bars around it.
+        const aspect = player.videoAspect > 0 ? player.videoAspect : 16 / 9
         width = 400
-        height = 225
+        height = Math.round(Math.max(180, Math.min(400, 400 / aspect)))
         x = screen.virtualX + screen.width - width - 24
         y = screen.virtualY + screen.height - height - 64
     }

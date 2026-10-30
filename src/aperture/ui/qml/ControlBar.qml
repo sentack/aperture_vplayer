@@ -130,6 +130,23 @@ Rectangle {
             value: player.duration > 0 ? player.position / player.duration : 0
             onMoved: value => player.seek(Math.round(value * player.duration))
 
+            // Chapter starts: thin ticks across the track.
+            Repeater {
+                model: player.duration > 0 ? player.chapters : []
+
+                Rectangle {
+                    required property var modelData
+                    visible: modelData.time > 0
+                    x: seekSlider.width * modelData.time / player.duration - width / 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 2
+                    height: 10
+                    radius: 1
+                    color: theme.text_secondary
+                    opacity: 0.7
+                }
+            }
+
             // A–B loop: a tinted span between the two points, or a tick while only A is set.
             Rectangle {
                 readonly property real scale_: player.duration > 0 ? seekSlider.width / player.duration : 0
@@ -190,7 +207,7 @@ Rectangle {
 
         ToggleButton {
             glyph: Icons.mini
-            label: "Mini player"
+            label: "Picture-in-picture"
             enabled: player.hasMedia
             onClicked: bar.miniToggled()
         }

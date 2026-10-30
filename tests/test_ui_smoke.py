@@ -20,6 +20,13 @@ def app():
     return QGuiApplication.instance() or QGuiApplication([])
 
 
+def _flush_deletes(app) -> None:
+    from PySide6.QtCore import QCoreApplication, QEvent
+
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    app.processEvents()
+
+
 @pytest.fixture
 def ui(app, tmp_path):
     from aperture.app import load_ui
@@ -30,8 +37,17 @@ def ui(app, tmp_path):
     yield engine, player, warnings
     for window in engine.rootObjects():
         window.close()
-    app.processEvents()
-    del engine
+    # load_ui parents its controllers (players, decoders) to the app. Destroy each test's set
+    # now, while Qt is fully running: left to interpreter exit, macOS crashes tearing down
+    # dozens of media players at once. The QML goes first, so no binding sees a deleted object.
+    # Only Aperture's own controllers go: the app also owns Qt internals (input devices, popup
+    # helpers) that Qt creates on demand and must not be deleted.
+    engine.deleteLater()
+    _flush_deletes(app)
+    for child in app.children():
+        if type(child).__module__.startswith("aperture."):
+            child.deleteLater()
+    _flush_deletes(app)
 
 
 def messages(warnings):
@@ -208,5 +224,38 @@ def test_about_page_shows_version_without_network(ui, app):
     dialog.setProperty("page", 5)
     app.processEvents()
     window.setProperty("settingsOpen", False)
+    app.processEvents()
+    assert messages(warnings) == []
+
+
+def test_phase_10_commands_without_media(ui, app):
+    engine, player, warnings = ui
+    tracks = engine.rootContext().contextProperty("tracks")
+    notices = []
+    player.noticed.connect(notices.append)
+    assert player.property("chapters") == [] and player.property("currentChapter") == -1
+    player.nextChapter()
+    assert "This file has no chapters" in notices
+    tracks.nudgeSubtitles(100)
+    tracks.nudgeSubtitles(100)
+    assert tracks.property("subtitleDelay") == 200
+    tracks.resetSubtitleDelay()
+    assert tracks.property("subtitleDelay") == 0
+    player.setProperty("audioBoost", 1.5)  # switches to the boosted path, or reports it can't
+    player.setProperty("audioBoost", 1.0)
+    assert player.property("audioBoost") == 1.0
+    app.processEvents()
+    assert messages(warnings) == []
+
+
+def test_menus_with_chapters_and_boost_open_cleanly(ui, app):
+    from PySide6.QtCore import QObject
+
+    engine, _, warnings = ui
+    window = engine.rootObjects()[0]
+    menu = window.findChild(QObject, "quickMenu")
+    menu.open()
+    app.processEvents()
+    menu.close()
     app.processEvents()
     assert messages(warnings) == []

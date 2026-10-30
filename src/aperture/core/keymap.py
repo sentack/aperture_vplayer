@@ -33,6 +33,8 @@ ACTIONS: tuple[Action, ...] = (
     Action("frame_previous", "Previous frame", PLAYBACK, ","),
     Action("frame_next", "Next frame", PLAYBACK, "."),
     Action("ab_loop", "A–B loop: set A, set B, clear", PLAYBACK, "L"),
+    Action("chapter_next", "Next chapter", PLAYBACK, "Ctrl+."),
+    Action("chapter_previous", "Previous chapter", PLAYBACK, "Ctrl+,"),
     Action("slower", "Slower", PLAYBACK, "["),
     Action("faster", "Faster", PLAYBACK, "]"),
     Action("normal_speed", "Normal speed", PLAYBACK, "="),
@@ -41,14 +43,17 @@ ACTIONS: tuple[Action, ...] = (
     Action("mute", "Mute", SOUND, "M"),
     Action("subtitles", "Subtitles on / off", SOUND, "C"),
     Action("audio_track", "Next audio track", SOUND, "A"),
+    Action("subtitle_earlier", "Subtitles earlier (−100 ms)", SOUND, "G"),
+    Action("subtitle_later", "Subtitles later (+100 ms)", SOUND, "H"),
     Action("next", "Next in playlist", WINDOW, "N"),
     Action("previous", "Previous in playlist", WINDOW, "P"),
     Action("fullscreen", "Fullscreen", WINDOW, "F"),
-    Action("mini_player", "Mini player", WINDOW, "I"),
+    Action("mini_player", "Picture-in-picture", WINDOW, "Ctrl+P"),
     Action("screenshot", "Screenshot", WINDOW, "S"),
     Action("open_files", "Open files", WINDOW, "Ctrl+O"),
     Action("open_url", "Open URL", WINDOW, "Ctrl+U"),
-    Action("settings", "Settings", WINDOW, "Ctrl+,"),
+    # Ctrl+, is Previous chapter since 0.6.0, so Settings moved to Ctrl+Alt+S.
+    Action("settings", "Settings", WINDOW, "Ctrl+Alt+S"),
     Action("context_menu", "Quick options menu", WINDOW, "Shift+F10"),
 )
 ACTION_IDS = frozenset(action.id for action in ACTIONS)
