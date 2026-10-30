@@ -36,6 +36,8 @@ Item {
     Bound { action: "frame_previous"; onActivated: player.stepFrame(-1) }
     Bound { action: "frame_next"; onActivated: player.stepFrame(1) }
     Bound { action: "ab_loop"; onActivated: player.cycleLoop() }
+    Bound { action: "chapter_next"; onActivated: player.nextChapter() }
+    Bound { action: "chapter_previous"; onActivated: player.previousChapter() }
     Bound { action: "slower"; onActivated: player.stepRate(-1) }
     Bound { action: "faster"; onActivated: player.stepRate(1) }
     Bound { action: "normal_speed"; onActivated: player.resetRate() }
@@ -44,6 +46,8 @@ Item {
     Bound { action: "mute"; onActivated: player.toggleMute() }
     Bound { action: "subtitles"; onActivated: tracks.toggleSubtitles() }
     Bound { action: "audio_track"; onActivated: tracks.cycleAudio() }
+    Bound { action: "subtitle_earlier"; onActivated: tracks.nudgeSubtitles(-100) }
+    Bound { action: "subtitle_later"; onActivated: tracks.nudgeSubtitles(100) }
     Bound { action: "next"; onActivated: player.playNext() }
     Bound { action: "previous"; onActivated: player.playPrevious() }
     Bound { action: "fullscreen"; onActivated: keys.fullscreenToggled() }

@@ -5,6 +5,7 @@ import pytest
 
 from aperture.core.chapters import Chapter, chapter_at, read_chapters
 from aperture.core.gain import KNEE, boost, soft_limit
+from aperture.core.keymap import Keymap
 
 # --- building tiny Matroska files ---------------------------------------------------------
 
@@ -115,3 +116,14 @@ def test_boost_at_unity_is_untouched():
     samples = array("h", [123, -456])
     assert boost(samples, 1.0) is samples and list(samples) == [123, -456]
 
+
+
+# --- phase 10 shortcuts -------------------------------------------------------------------
+
+
+def test_phase_10_defaults():
+    keymap = Keymap()
+    assert keymap.key("mini_player") == "Ctrl+P"
+    assert keymap.key("subtitle_earlier") == "G" and keymap.key("subtitle_later") == "H"
+    assert keymap.key("chapter_next") == "Ctrl+." and keymap.key("chapter_previous") == "Ctrl+,"
+    assert keymap.key("settings") == "Ctrl+Alt+S"

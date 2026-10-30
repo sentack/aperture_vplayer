@@ -210,3 +210,23 @@ def test_about_page_shows_version_without_network(ui, app):
     window.setProperty("settingsOpen", False)
     app.processEvents()
     assert messages(warnings) == []
+
+
+def test_phase_10_commands_without_media(ui, app):
+    engine, player, warnings = ui
+    tracks = engine.rootContext().contextProperty("tracks")
+    notices = []
+    player.noticed.connect(notices.append)
+    assert player.property("chapters") == [] and player.property("currentChapter") == -1
+    player.nextChapter()
+    assert "This file has no chapters" in notices
+    tracks.nudgeSubtitles(100)
+    tracks.nudgeSubtitles(100)
+    assert tracks.property("subtitleDelay") == 200
+    tracks.resetSubtitleDelay()
+    assert tracks.property("subtitleDelay") == 0
+    player.setProperty("audioBoost", 1.5)  # switches to the boosted path, or reports it can't
+    player.setProperty("audioBoost", 1.0)
+    assert player.property("audioBoost") == 1.0
+    app.processEvents()
+    assert messages(warnings) == []

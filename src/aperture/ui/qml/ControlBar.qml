@@ -190,7 +190,7 @@ Rectangle {
 
         ToggleButton {
             glyph: Icons.mini
-            label: "Mini player"
+            label: "Picture-in-picture"
             enabled: player.hasMedia
             onClicked: bar.miniToggled()
         }

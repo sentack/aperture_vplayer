@@ -43,6 +43,7 @@ def is_subtitle(path: Path) -> bool:
 class TrackSelector(QObject):
     subtitlesChanged = Signal()
     subtitleTextChanged = Signal()
+    delayChanged = Signal()
     audioChanged = Signal()
     noticed = Signal(str)
 
@@ -57,6 +58,8 @@ class TrackSelector(QObject):
         self.auto_select = True
         self._cues: CueTrack | None = None
         self._text = ""
+        # Positive: subtitles show later. Applies to .srt/.vtt files, whose timing we control.
+        self._delay = 0
 
         player.tracksChanged.connect(self._on_tracks)
         player.activeTracksChanged.connect(lambda: self.audioChanged.emit())
@@ -114,8 +117,34 @@ class TrackSelector(QObject):
         if added is not None and self._activate(added):
             self.noticed.emit(f"Subtitles: {added.label}")
 
+    @Property(int, notify=delayChanged)
+    def subtitleDelay(self) -> int:
+        return self._delay
+
+    @Slot(int)
+    def nudgeSubtitles(self, delta_ms: int) -> None:
+        """Shift subtitle-file timing: negative shows lines earlier, positive later."""
+        self._set_delay(self._delay + delta_ms)
+        if self._active is not None and self._active.path is None:
+            self.noticed.emit("Subtitle delay works with subtitle files (.srt, .vtt) only")
+        else:
+            self.noticed.emit(f"Subtitle delay {self._delay / 1000:+.1f} s")
+
+    @Slot()
+    def resetSubtitleDelay(self) -> None:
+        self._set_delay(0)
+        self.noticed.emit("Subtitle delay 0.0 s")
+
+    def _set_delay(self, value: int) -> None:
+        value = max(-60_000, min(60_000, value))
+        if value != self._delay:
+            self._delay = value
+            self.delayChanged.emit()
+            self._update_text(self._player.position())
+
     def reset(self, video: Path | None) -> None:
         """Forget the previous file's tracks; pick up sidecar subtitles for `video`."""
+        self._set_delay(0)  # each file has its own sync problems
         self._files = [_Source(p.name, path=p) for p in find_sidecars(video)] if video else []
         self._embedded = []
         self._last = None
@@ -184,7 +213,7 @@ class TrackSelector(QObject):
         self.audioChanged.emit()
 
     def _update_text(self, position_ms: int) -> None:
-        text = self._cues.text_at(position_ms) if self._cues is not None else ""
+        text = self._cues.text_at(position_ms - self._delay) if self._cues is not None else ""
         if text != self._text:
             self._text = text
             self.subtitleTextChanged.emit()

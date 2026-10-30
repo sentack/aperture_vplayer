@@ -95,6 +95,8 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 | `,` | Previous frame |
 | `.` | Next frame |
 | `L` | A–B loop: set A, set B, clear |
+| `Ctrl+.` | Next chapter |
+| `Ctrl+,` | Previous chapter |
 | `[` | Slower |
 | `]` | Faster |
 | `=` | Normal speed |
@@ -103,14 +105,16 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 | `M` | Mute |
 | `C` | Subtitles on / off |
 | `A` | Next audio track |
+| `G` | Subtitles earlier (−100 ms) |
+| `H` | Subtitles later (+100 ms) |
 | `N` | Next in playlist |
 | `P` | Previous in playlist |
 | `F` | Fullscreen |
-| `I` | Mini player |
+| `Ctrl+P` | Picture-in-picture |
 | `S` | Screenshot |
 | `Ctrl+O` | Open files |
 | `Ctrl+U` | Open URL |
-| `Ctrl+,` | Settings |
+| `Ctrl+Alt+S` | Settings |
 | `Shift+F10` | Quick options menu |
 | `Esc` | Close dialog / leave fullscreen (fixed) |
 | `Menu` | Quick options menu (fixed) |
