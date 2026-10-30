@@ -81,3 +81,9 @@ def test_clear():
     playlist = make(3, index=1)
     playlist.clear()
     assert len(playlist) == 0 and playlist.index == -1
+
+
+def test_stream_urls_are_kept_verbatim():
+    playlist = Playlist()
+    playlist.add(["https://example.com/live.m3u8", "local.mp4"])
+    assert playlist.items == ("https://example.com/live.m3u8", Path("local.mp4"))

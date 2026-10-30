@@ -129,3 +129,14 @@ def test_malformed_entries_are_dropped(tmp_path):
 
 def test_in_memory_save_is_noop():
     History().save()
+
+
+def test_stream_urls_in_history(tmp_path):
+    url = "https://example.com/a.mp4"
+    history = History(tmp_path / "h.json")
+    history.touch(url)
+    history.remember_position(url, 60_000, HOUR)
+    history.save()
+    loaded = History(tmp_path / "h.json")
+    assert loaded.recent == [url]
+    assert loaded.resume_point(url) == 60_000

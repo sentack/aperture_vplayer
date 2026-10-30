@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from aperture.core.media import Source, is_url
 from aperture.core.storage import read_json, write_json
 
 RECENT_LIMIT = 10
@@ -14,8 +15,8 @@ MIN_RESUME_MS = 5_000
 END_MARGIN_MS = 10_000
 
 
-def _key(path: Path | str) -> str:
-    return str(Path(path).absolute())
+def _key(path: Source) -> str:
+    return path if is_url(path) else str(Path(path).absolute())
 
 
 class History:
@@ -31,8 +32,8 @@ class History:
     # --- recent ------------------------------------------------------------
 
     @property
-    def recent(self) -> list[Path]:
-        return [Path(p) for p in self._recent]
+    def recent(self) -> list[Source]:
+        return [p if is_url(p) else Path(p) for p in self._recent]
 
     def touch(self, path: Path | str) -> None:
         """Move `path` to the front of the recent list."""
