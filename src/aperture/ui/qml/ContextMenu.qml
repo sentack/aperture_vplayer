@@ -5,7 +5,8 @@ import QtQuick.Controls.Basic as T
 // Right-click / Shift+F10 / Menu-key quick options: what you are likely to want right now,
 // not a full menu bar.
 T.Menu {
-    id: menu
+    // Not `menu`: every MenuItem has a `menu` property that would shadow the id.
+    id: options
 
     property bool fullscreen: false
 
@@ -14,8 +15,6 @@ T.Menu {
     signal subtitleFileRequested()
     signal fullscreenRequested()
     signal settingsRequested()
-
-    readonly property color accent: theme.accent
 
     component Item_: T.MenuItem {
         id: item
@@ -38,7 +37,8 @@ T.Menu {
             visible: item.checkable && item.checked
             text: "✓"
             font.weight: Font.Bold
-            color: menu.accent
+            // theme, not `menu`: inside a MenuItem, `menu` is the item's own (sub)menu.
+            color: theme.accent
         }
 
         arrow: UiText {
@@ -97,12 +97,12 @@ T.Menu {
 
     Item_ {
         text: "Open file…"
-        onTriggered: menu.openFilesRequested()
+        onTriggered: options.openFilesRequested()
     }
 
     Item_ {
         text: "Open URL…"
-        onTriggered: menu.openUrlRequested()
+        onTriggered: options.openUrlRequested()
     }
 
     Separator_ {}
@@ -207,19 +207,19 @@ T.Menu {
         Item_ {
             text: "Load file…"
             enabled: player.hasMedia
-            onTriggered: menu.subtitleFileRequested()
+            onTriggered: options.subtitleFileRequested()
         }
     }
 
     Separator_ {}
 
     Item_ {
-        text: menu.fullscreen ? "Exit fullscreen" : "Fullscreen"
-        onTriggered: menu.fullscreenRequested()
+        text: options.fullscreen ? "Exit fullscreen" : "Fullscreen"
+        onTriggered: options.fullscreenRequested()
     }
 
     Item_ {
         text: "Settings…"
-        onTriggered: menu.settingsRequested()
+        onTriggered: options.settingsRequested()
     }
 }

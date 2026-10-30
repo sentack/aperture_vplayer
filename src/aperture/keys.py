@@ -33,9 +33,14 @@ class KeymapController(QObject):
         self._mac = mac
         self._keymap = Keymap(settings.shortcuts)
         self._capturing = False
-        self.keys = QQmlPropertyMap()
-        self.keys.setParent(self)
+        self._keys = QQmlPropertyMap()
+        self._keys.setParent(self)
         self._publish()
+
+    @Property(QObject, constant=True)
+    def keys(self) -> QQmlPropertyMap:
+        """Action id -> key sequence, updated in place on every rebind."""
+        return self._keys
 
     @Property(list, notify=changed)
     def actions(self) -> list[dict[str, str]]:
@@ -126,5 +131,5 @@ class KeymapController(QObject):
 
     def _publish(self) -> None:
         for action_id, key in self._keymap.keys().items():
-            self.keys.insert(action_id, key)
+            self._keys.insert(action_id, key)
         self.changed.emit()

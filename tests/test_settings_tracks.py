@@ -157,8 +157,9 @@ def test_decoder_choice_sets_software_decoding(monkeypatch):
 
     from aperture.app import apply_decoder_choice
 
-    for name in ("QT_FFMPEG_DECODING_HW_DEVICE_TYPES", "QT_DISABLE_HW_TEXTURES_CONVERSION"):
-        monkeypatch.delenv(name, raising=False)
+    # A private copy: the variables must not leak into the UI tests that run later.
+    environ = {k: v for k, v in os.environ.items() if not k.startswith("QT_")}
+    monkeypatch.setattr(os, "environ", environ)
     apply_decoder_choice(True)
     assert "QT_FFMPEG_DECODING_HW_DEVICE_TYPES" not in os.environ
     apply_decoder_choice(False)
