@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wrap the PyInstaller build (dist/aperture) into a compressed AppImage and tarball.
 #
-#   packaging/linux/build-appimage.sh 0.5.0
+#   packaging/linux/build-appimage.sh 0.6.0
 #
 # Needs appimagetool on PATH or in $APPIMAGETOOL. Without FUSE (containers, CI),
 # export APPIMAGE_EXTRACT_AND_RUN=1 first.

@@ -30,10 +30,12 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 ## Features
 
 **Playback**
-- MP4, MKV, AVI, MOV, WebM and more through Qt Multimedia's FFmpeg backend
+- MP4, MKV, AVI, MOV, WebM and more through Qt Multimedia's FFmpeg backend: H.264, HEVC (H.265), VP8, VP9 and AV1 video (AV1 where the graphics hardware decodes it), with Opus, AAC, MP3, FLAC and Vorbis audio
 - Play, pause, stop, seek by click or drag, with a frame preview when hovering the seek bar
 - Volume and mute, speed from 0.25× to 2×
-- Fullscreen, and an always-on-top mini player you can drag anywhere
+- Fullscreen, and an always-on-top picture-in-picture window (Ctrl+P) sized to the video
+- Chapters in MKV, WebM and MP4 files: ticks on the seek bar, Ctrl+. / Ctrl+, to jump, a Chapters menu
+- Audio boost up to 200%, with a limiter so loud parts don't crackle
 - Controls fade away while you watch, leaving a thin progress line
 
 **Library**
@@ -43,6 +45,7 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 
 **Subtitles and audio**
 - Embedded subtitle tracks, plus `.srt` / `.vtt` files — same-name files next to the video load automatically
+- Subtitle delay (G / H) to fix out-of-sync subtitle files
 - Audio track switching for multi-language files
 
 **Look and feel**
@@ -155,9 +158,9 @@ Package locally:
 ```sh
 pip install -e ".[build]"
 pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/ (+ dist/Aperture.app on macOS)
-iscc /DAppVersion=0.5.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
-packaging/linux/build-appimage.sh 0.5.0                     # Linux, needs appimagetool
-packaging/macos/build-dmg.sh 0.5.0                          # macOS, needs Xcode command-line tools
+iscc /DAppVersion=0.6.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
+packaging/linux/build-appimage.sh 0.6.0                     # Linux, needs appimagetool
+packaging/macos/build-dmg.sh 0.6.0                          # macOS, needs Xcode command-line tools
 ```
 
 `build-dmg.sh` ad-hoc signs by default. Set `MACOS_SIGN_IDENTITY` to sign with a Developer ID certificate, and `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` to notarize.
@@ -167,7 +170,7 @@ The icon is generated from code: `python packaging/make_icons.py`.
 ## Releasing
 
 1. Bump `__version__` in `src/aperture/__init__.py`.
-2. Tag and push: `git tag v0.5.0 && git push origin v0.5.0`.
+2. Tag and push: `git tag v0.6.0 && git push origin v0.6.0`.
 
 The release workflow tests, builds the Windows installer, the Linux AppImage and tarball, and the macOS disk image, then publishes them to a GitHub release.
 
