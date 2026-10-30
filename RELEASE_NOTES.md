@@ -16,7 +16,7 @@ Aperture can now update itself.
 Press **Check for updates** on the About page. Aperture asks GitHub once, only when you press it, and tells you either that you're on the latest version or which version is new, when it came out, and what changed.
 
 ### Update now
-- **Update now** downloads the new version in the background, with progress shown on the About page. Keep watching while it downloads.
+- **Update now** downloads the new version in the background, with progress shown on the About page. Your video keeps playing meanwhile.
 - Before anything is installed, the download is checked against the release's published checksums. A damaged or altered download is thrown away.
 - When it's ready, choose **Restart and update**, or **Later** to have it installed the next time you open Aperture.
 - Your current version is kept until the new one has started once. If the new one fails to start, Aperture puts the old one back.
