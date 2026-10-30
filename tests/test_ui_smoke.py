@@ -191,3 +191,22 @@ def test_hardware_decoding_toggle_flags_restart(ui, app):
     prefs.setProperty("hardwareDecoding", not prefs.property("hardwareDecoding"))
     assert prefs.property("restartNeeded") is False
     assert messages(warnings) == []
+
+
+def test_about_page_shows_version_without_network(ui, app):
+    from PySide6.QtCore import QObject
+
+    from aperture import __version__
+
+    engine, _, warnings = ui
+    updates = engine.rootContext().contextProperty("updates")
+    assert updates.property("currentVersion") == __version__
+    assert updates.property("state") == "idle"
+    window = engine.rootObjects()[0]
+    dialog = window.findChild(QObject, "settingsDialog")
+    window.setProperty("settingsOpen", True)
+    dialog.setProperty("page", 5)
+    app.processEvents()
+    window.setProperty("settingsOpen", False)
+    app.processEvents()
+    assert messages(warnings) == []

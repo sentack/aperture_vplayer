@@ -8,7 +8,9 @@ Modal {
     id: dialog
 
     readonly property bool mac: Qt.platform.os === "osx"
-    readonly property var categories: ["General", "Playback", "Appearance", "Subtitles", "Keyboard shortcuts"]
+    readonly property var categories: [
+        "General", "Playback", "Appearance", "Subtitles", "Keyboard shortcuts", "About",
+    ]
     property int page: 0
 
     cardWidth: 760
@@ -515,6 +517,168 @@ Modal {
                                 font.weight: Font.DemiBold
                                 color: theme.text_tertiary
                             }
+                        }
+                    }
+                }
+            }
+
+            Page {
+                index: 5
+
+                Row {
+                    spacing: 16
+
+                    Image {
+                        width: 64
+                        height: 64
+                        source: "../../resources/aperture.svg"
+                        sourceSize: Qt.size(128, 128)
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 4
+
+                        UiText {
+                            text: "Aperture"
+                            font.pixelSize: 22
+                            font.weight: Font.Bold
+                            color: theme.text_primary
+                        }
+
+                        UiText {
+                            text: `Version ${updates.currentVersion}`
+                            font.features: ({ "tnum": 1 })
+                            color: theme.text_secondary
+                        }
+
+                        UiText {
+                            text: updates.currentDate ? `Released ${updates.currentDate}` : "Development build"
+                            font.pixelSize: 12
+                            color: theme.text_tertiary
+                        }
+                    }
+                }
+
+                Section {
+                    title: "Updates"
+
+                    UiText {
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        elide: Text.ElideNone
+                        color: updates.state === "error" ? "#E5484D" : theme.text_primary
+                        text: {
+                            switch (updates.state) {
+                            case "checking": return "Checking for updates…"
+                            case "current": return "You're on the latest version."
+                            case "available": return `Version ${updates.latestVersion} is available` + (updates.latestDate ? `, released ${updates.latestDate}.` : ".")
+                            case "downloading": return `Downloading version ${updates.latestVersion}…`
+                            case "ready": return `Version ${updates.latestVersion} is downloaded and verified.`
+                            case "scheduled": return `Version ${updates.latestVersion} will install the next time you open Aperture.`
+                            case "opened": return "The new disk image is open. Drag Aperture to Applications and replace the old copy, then reopen it."
+                            case "error": return updates.error
+                            default: return "Aperture checks GitHub only when you ask."
+                            }
+                        }
+                    }
+
+                    // Download progress.
+                    Row {
+                        visible: updates.state === "downloading"
+                        spacing: 10
+
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 260
+                            height: 6
+                            radius: 3
+                            color: theme.track_bg
+
+                            Rectangle {
+                                width: parent.width * updates.progress
+                                height: parent.height
+                                radius: parent.radius
+                                color: theme.accent
+                            }
+                        }
+
+                        UiText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: `${Math.round(updates.progress * 100)}%`
+                            font.features: ({ "tnum": 1 })
+                            elide: Text.ElideNone
+                        }
+
+                        PillButton {
+                            text: "Cancel"
+                            onClicked: updates.cancel()
+                        }
+                    }
+
+                    Flow {
+                        width: parent.width
+                        spacing: 8
+
+                        PillButton {
+                            text: "Check for updates"
+                            primary: updates.state !== "available"
+                            visible: ["idle", "current", "error", "available"].includes(updates.state)
+                            onClicked: updates.check()
+                        }
+
+                        PillButton {
+                            text: "Update now"
+                            primary: true
+                            visible: updates.state === "available" && updates.canDownload
+                            onClicked: updates.update()
+                        }
+
+                        PillButton {
+                            text: "Restart and update"
+                            primary: true
+                            visible: updates.state === "ready"
+                            onClicked: updates.restartNow()
+                        }
+
+                        PillButton {
+                            text: "Later"
+                            visible: updates.state === "ready"
+                            onClicked: updates.later()
+                        }
+
+                        PillButton {
+                            text: "Open release page"
+                            visible: updates.state === "available" || updates.state === "error"
+                            onClicked: updates.openReleasePage()
+                        }
+                    }
+
+                    Note {
+                        visible: updates.state === "available" && updates.hint !== ""
+                        text: updates.hint
+                    }
+                }
+
+                Section {
+                    title: "What's new"
+                    visible: updates.changelog !== "" && ["available", "downloading", "ready", "scheduled", "opened"].includes(updates.state)
+
+                    Rectangle {
+                        width: parent.width
+                        height: notes.implicitHeight + 28
+                        radius: 14
+                        color: theme.chip_bg
+
+                        UiText {
+                            id: notes
+                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 }
+                            text: updates.changelog
+                            textFormat: Text.MarkdownText
+                            wrapMode: Text.WordWrap
+                            elide: Text.ElideNone
+                            color: theme.text_secondary
+                            onLinkActivated: link => Qt.openUrlExternally(link)
                         }
                     }
                 }
