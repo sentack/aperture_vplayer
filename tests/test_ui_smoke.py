@@ -22,8 +22,11 @@ def app():
 
 @pytest.fixture
 def ui(app, tmp_path):
+    from PySide6.QtCore import QCoreApplication, QEvent
+
     from aperture.app import load_ui
 
+    before = set(app.children())
     warnings = []
     engine, player = load_ui(app, tmp_path, on_warnings=lambda errors: warnings.extend(errors))
     app.processEvents()
@@ -31,7 +34,14 @@ def ui(app, tmp_path):
     for window in engine.rootObjects():
         window.close()
     app.processEvents()
-    del engine
+    # load_ui parents its controllers (players, decoders) to the app. Destroy each test's set
+    # now, while Qt is fully running: left to interpreter exit, macOS crashes tearing down
+    # dozens of media players at once.
+    engine.deleteLater()
+    for child in set(app.children()) - before:
+        child.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    app.processEvents()
 
 
 def messages(warnings):

@@ -53,7 +53,8 @@ class AudioBoost(QObject):
         self._player = player
         self._output = output
         self._gain = 1.0
-        self._capture = None  # QAudioBufferOutput while boosting
+        self._capture = None  # QAudioBufferOutput, made once and reused
+        self._boosting = False
         self._sink: QAudioSink | None = None
         self._device = None
         self._format: QAudioFormat | None = None
@@ -68,7 +69,7 @@ class AudioBoost(QObject):
     def set_gain(self, gain: float) -> bool:
         """Apply a boost between 1.0 and MAX_BOOST; False if this system cannot boost."""
         gain = min(MAX_BOOST, max(1.0, gain))
-        if gain > 1.0 and self._capture is None and not self._start():
+        if gain > 1.0 and not self._boosting and not self._start():
             return False
         self._gain = gain
         if gain == 1.0:
@@ -81,19 +82,22 @@ class AudioBoost(QObject):
         except ImportError:
             self.unavailable.emit("Audio boost needs a newer Qt (6.8 or later)")
             return False
-        self._capture = QAudioBufferOutput(self)
-        self._capture.audioBufferReceived.connect(self._on_buffer)
+        if self._capture is None:
+            # Kept for the player's lifetime: deleting it while the player may still hold it
+            # (deleteLater) crashed Qt at exit on macOS.
+            self._capture = QAudioBufferOutput(self)
+            self._capture.audioBufferReceived.connect(self._on_buffer)
         self._player.setAudioOutput(None)
         self._player.setAudioBufferOutput(self._capture)
+        self._boosting = True
         return True
 
     def _stop(self) -> None:
-        if self._capture is None:
+        if not self._boosting:
             return
+        self._boosting = False
         self._player.setAudioBufferOutput(None)
         self._player.setAudioOutput(self._output)
-        self._capture.deleteLater()
-        self._capture = None
         if self._sink is not None:
             self._sink.stop()
             self._sink.deleteLater()
