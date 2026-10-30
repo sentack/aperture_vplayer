@@ -43,18 +43,38 @@ def _buffer_bytes(buffer) -> bytes:
     return b""
 
 
+def make_capture(parent: QObject):
+    """The QAudioBufferOutput boost reads decoded audio from, or None before Qt 6.8.
+
+    Create it before the QMediaPlayer, under the same parent. Once attached to a player, its
+    destructor reaches into that player even after being detached (seen on macOS), so it
+    must be destroyed first; Qt destroys children in the order they were created.
+    """
+    try:
+        from PySide6.QtMultimedia import QAudioBufferOutput
+    except ImportError:
+        return None
+    return QAudioBufferOutput(parent)
+
+
 class AudioBoost(QObject):
     unavailable = Signal(str)
 
     def __init__(
-        self, player: QMediaPlayer, output: QAudioOutput, parent: QObject | None = None
+        self,
+        player: QMediaPlayer,
+        output: QAudioOutput,
+        capture: QObject | None,
+        parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._player = player
         self._output = output
-        self._gain = 1.0
-        self._capture = None  # QAudioBufferOutput, made once and reused
+        self._capture = capture  # from make_capture(), owned by whoever owns the player
         self._boosting = False
+        self._gain = 1.0
+        if capture is not None:
+            capture.audioBufferReceived.connect(self._on_buffer)
         self._sink: QAudioSink | None = None
         self._device = None
         self._format: QAudioFormat | None = None
@@ -77,16 +97,9 @@ class AudioBoost(QObject):
         return True
 
     def _start(self) -> bool:
-        try:
-            from PySide6.QtMultimedia import QAudioBufferOutput
-        except ImportError:
+        if self._capture is None:
             self.unavailable.emit("Audio boost needs a newer Qt (6.8 or later)")
             return False
-        if self._capture is None:
-            # Kept for the player's lifetime: deleting it while the player may still hold it
-            # (deleteLater) crashed Qt at exit on macOS.
-            self._capture = QAudioBufferOutput(self)
-            self._capture.audioBufferReceived.connect(self._on_buffer)
         self._player.setAudioOutput(None)
         self._player.setAudioBufferOutput(self._capture)
         self._boosting = True

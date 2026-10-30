@@ -22,6 +22,7 @@ CASES = {
     "raw-buffer": "attach then detach a QAudioBufferOutput, audio output untouched",
     "raw-both": "exactly what boost does: swap audio output for buffer output and back",
     "raw-both-player-first": "same as raw-both, but the player is created before its output",
+    "raw-both-capture-first": "the fix: capture created first, so destroyed before the player",
     "controller-plain": "the app's PlayerController, no boost",
     "controller-boost": "the app's PlayerController, boost 150% then back to 100%",
 }
@@ -36,6 +37,7 @@ def main(case: str) -> None:
     app = QGuiApplication([])
     owner = QObject()
     if case.startswith("raw"):
+        early = QAudioBufferOutput(owner) if case == "raw-both-capture-first" else None
         if case == "raw-both-player-first":
             player = QMediaPlayer(owner)
             audio = QAudioOutput(owner)
@@ -43,14 +45,14 @@ def main(case: str) -> None:
             audio = QAudioOutput(owner)
             player = QMediaPlayer(owner)
         player.setAudioOutput(audio)
-        capture = QAudioBufferOutput(owner)
+        capture = early or QAudioBufferOutput(owner)
         if case == "raw-detach-audio":
             player.setAudioOutput(None)
             player.setAudioOutput(audio)
         elif case == "raw-buffer":
             player.setAudioBufferOutput(capture)
             player.setAudioBufferOutput(None)
-        elif case in ("raw-both", "raw-both-player-first"):
+        elif case in ("raw-both", "raw-both-player-first", "raw-both-capture-first"):
             player.setAudioOutput(None)
             player.setAudioBufferOutput(capture)
             app.processEvents()

@@ -32,7 +32,7 @@ from aperture.core.media import (
     parse_stream_url,
     screenshot_name,
 )
-from aperture.player.boost import AudioBoost
+from aperture.player.boost import AudioBoost, make_capture
 from aperture.player.tracks import TrackSelector, is_subtitle
 from aperture.player.urls import to_paths
 
@@ -106,6 +106,9 @@ class PlayerController(QObject):
         self._error_title = ""
         self._error = ""
 
+        # The boost's capture object first: it must be destroyed before the player (see
+        # make_capture), and children are destroyed in creation order.
+        capture = make_capture(self)
         self._audio = QAudioOutput(self)
         self._player = QMediaPlayer(self)
         self._player.setAudioOutput(self._audio)
@@ -127,7 +130,7 @@ class PlayerController(QObject):
         self._player.seekableChanged.connect(self._on_seekable)
         self._player.hasVideoChanged.connect(lambda _: self.hasVideoChanged.emit())
         self._player.metaDataChanged.connect(self._on_metadata)
-        self.boost = AudioBoost(self._player, self._audio, self)
+        self.boost = AudioBoost(self._player, self._audio, capture, self)
         self.boost.unavailable.connect(self.noticed)
         self._player.playbackRateChanged.connect(lambda _: self.rateChanged.emit())
         self._player.mediaStatusChanged.connect(self._on_media_status)

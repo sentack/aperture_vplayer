@@ -47,7 +47,7 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           for case in raw-plain raw-detach-audio raw-buffer raw-both raw-both-player-first \
-                      controller-plain controller-boost; do
+                      raw-both-capture-first controller-plain controller-boost; do
             python -X faulthandler .github/scripts/probe_boost_crash.py "$case"
             echo "::notice title=probe $case::exit $?"
           done
