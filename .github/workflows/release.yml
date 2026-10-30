@@ -79,6 +79,7 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
+          sudo apt-get install -y --no-install-recommends squashfs-tools  # to verify compression
           curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool
           APPIMAGETOOL="$PWD/appimagetool" packaging/linux/build-appimage.sh "${{ steps.version.outputs.value }}"

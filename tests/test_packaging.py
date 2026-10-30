@@ -86,7 +86,8 @@ def test_release_artifacts_are_compressed():
     iss = (PACKAGING / "windows" / "aperture.iss").read_text(encoding="utf-8")
     assert "Compression=lzma2/ultra64" in iss and "SolidCompression=yes" in iss
     appimage = (PACKAGING / "linux" / "build-appimage.sh").read_text(encoding="utf-8")
-    assert "--comp zstd" in appimage and "xz -9" in appimage
+    assert "--comp xz" in appimage and "xz -9" in appimage
+    assert "unsquashfs -s" in appimage  # the build fails if the image is not xz-compressed
     assert "-format ULMO" in (PACKAGING / "macos" / "build-dmg.sh").read_text(encoding="utf-8")
 
 
