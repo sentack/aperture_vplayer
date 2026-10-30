@@ -52,6 +52,6 @@ def detect(
     appimage = environ.get("APPIMAGE")
     if appimage:
         return Installation("appimage", Path(appimage))
-    if str(exe).startswith(_MANAGED_PREFIXES):
+    if exe.as_posix().startswith(_MANAGED_PREFIXES):  # as_posix: same answer on any host
         return Installation("managed", None, "Installed by your package manager: update there.")
     return Installation("tarball", exe.parent)

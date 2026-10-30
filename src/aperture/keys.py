@@ -11,6 +11,7 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtQml import QQmlPropertyMap
 
 from aperture.core.keymap import ACTIONS, FIXED, BindingError, Keymap
+from aperture.qt_compat import property_map
 from aperture.settings import Settings
 
 _MODIFIER_KEYS = {
@@ -33,8 +34,7 @@ class KeymapController(QObject):
         self._mac = mac
         self._keymap = Keymap(settings.shortcuts)
         self._capturing = False
-        self._keys = QQmlPropertyMap()
-        self._keys.setParent(self)
+        self._keys = property_map(self)
         self._publish()
 
     @Property(QObject, constant=True)

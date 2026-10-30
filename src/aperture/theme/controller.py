@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlPropertyMap
 
+from aperture.qt_compat import property_map
 from aperture.settings import THEME_MODES, Settings
 from aperture.theme.qml import qml_palette
 from aperture.theme.tokens import ACCENTS, DARK, LIGHT
@@ -21,9 +21,7 @@ class ThemeController(QObject):
     def __init__(self, settings: Settings, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._settings = settings
-        # PySide6 deprecates the parent-taking constructor; parent it afterwards instead.
-        self.palette = QQmlPropertyMap()
-        self.palette.setParent(self)
+        self.palette = property_map(self)
         QGuiApplication.styleHints().colorSchemeChanged.connect(lambda _: self._apply())
         self._apply()
 
