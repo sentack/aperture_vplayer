@@ -27,9 +27,10 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # In-app updates refuse any download that does not match this list.
-      - name: Checksums
-        run: cd dist && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      # Same checks every PR ran on its build; also writes SHA256SUMS.txt, which in-app
+      # updates verify every download against.
+      - name: Check files and write checksums
+        run: python3 packaging/check_release.py dist
 
       - uses: softprops/action-gh-release@v2
         with:
