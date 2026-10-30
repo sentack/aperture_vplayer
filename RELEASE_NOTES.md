@@ -1,6 +1,6 @@
 # Aperture 0.4.0
 
-A right-click menu, precise playback controls, network streams, and shortcuts you can rebind.
+A right-click menu, precise playback controls, network streams, and keyboard shortcuts you can make your own.
 
 ## Downloads
 - **Windows 10/11 (x64):** `Aperture-0.4.0-windows-x64-setup.exe`
@@ -8,25 +8,51 @@ A right-click menu, precise playback controls, network streams, and shortcuts yo
 - **Linux (x86-64):** `Aperture-0.4.0-x86_64.AppImage`, or `Aperture-0.4.0-linux-x64.tar.xz`
 
 ## New
-- **Quick options menu:** right-click the video, or press Shift+F10 or the Menu key. Play/pause, open a file or URL, A–B loop, screenshot, playback speed, audio and subtitle tracks, fullscreen, settings.
-- **A–B loop (L):** first press sets the start, second sets the end and starts looping, third clears. The loop shows on the seek bar.
-- **Frame stepping (`.` / `,`):** pause and move one frame at a time.
-- **Screenshots (S):** saves the current frame as a PNG in Pictures/Aperture.
-- **Open URL (Ctrl+U):** play direct links and streams: http(s), HLS `.m3u8`, RTSP, RTMP and more.
-- **Rebindable shortcuts:** Settings → Keyboard shortcuts lists every action. Click a key and press a new one. Each key does exactly one thing: Aperture refuses a key already in use and names the action using it. System shortcuts like Alt+F4 are blocked. Unbind any action, or reset all shortcuts at once.
-- **Hardware decoding switch:** Settings → Playback. Turn it off if a video plays sound over a black picture; restart from the same page.
+
+### Quick options menu
+Right-click anywhere on the video, or press **Shift+F10** or the **Menu** key, for the things you reach for most:
+- Play / pause
+- Open file, open URL
+- A–B loop: set start, set end, clear
+- Screenshot
+- Playback speed
+- Audio track and subtitles
+- Fullscreen
+- Settings
+
+### A–B loop — `L`
+Press **L** where the loop should start and again where it should end; playback repeats that section until you press **L** a third time. The looped section is highlighted on the seek bar.
+
+### Frame by frame — `.` and `,`
+Pauses and steps one frame forward (`.`) or back (`,`), for finding the exact moment.
+
+### Screenshots — `S`
+Saves the frame on screen as a PNG in your **Pictures/Aperture** folder, named after the video and the moment it was taken.
+
+### Open URL — `Ctrl+U`
+Play direct video links and live streams, not just local files: http(s), HLS (`.m3u8`), RTSP, RTMP and more. Streams show up in Recent and remember where you stopped, like files do.
+
+### Your own keyboard shortcuts
+**Settings → Keyboard shortcuts** now lists every action. Click a key, press the combination you want, and it applies immediately.
+- Each key does exactly one thing. If a key is already taken, Aperture says which action uses it instead of quietly moving it.
+- System shortcuts such as Alt+F4 or Ctrl+Alt+Del can't be assigned.
+- Remove a shortcut with ×, or put them all back with **Reset shortcuts**.
+
+### Hardware decoding switch
+**Settings → Playback → Hardware-accelerated decoding.** On by default. Turn it off if a video plays sound over a black picture, then press **Restart now**.
 
 ## Fixed
-- WebM (VP8/VP9) and other files playing audio over a black picture: switch hardware decoding off for those. Every build is now also checked for the complete FFmpeg decoder set before it is packaged.
+- **WebM and some other videos played sound with a black picture.** Turning off hardware decoding (above) makes these play normally.
 
 ## Changed shortcuts
-Each action now has one key, so a few defaults moved:
-- Seek 10 s is now **Ctrl+← / Ctrl+→**, because L is the A–B loop.
-- Play/pause is **Space** only (K removed), fullscreen is **F** only (F11 removed).
+Every action now has a single key, so three defaults moved:
+- **Seek 10 seconds** is now **Ctrl+←** / **Ctrl+→** (L is the A–B loop now; J and L no longer seek).
+- **Play / pause** is **Space** (K no longer pauses).
+- **Fullscreen** is **F** (F11 no longer toggles fullscreen).
 
-Rebind any of them in Settings → Keyboard shortcuts.
+You can set any of them back in Settings → Keyboard shortcuts.
 
-## Known limitations
-- Frame stepping uses the file's reported frame rate; files that report none step at 30 fps.
-- Thumbnails and lyrics are for local files, not streams.
-- macOS builds target Apple Silicon and are ad-hoc signed unless the signing secrets are set.
+## Good to know
+- Frame stepping follows the video's own frame rate; videos that don't report one step at 30 frames per second.
+- Seek-bar thumbnails and lyrics work for files on your computer, not for streams.
+- On macOS, if the app hasn't been notarized, open **System Settings → Privacy & Security** and click **Open Anyway** the first time.
