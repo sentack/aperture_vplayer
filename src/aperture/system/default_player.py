@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import logging
 import os
+import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -91,6 +93,61 @@ def install_appimage_entry(appimage: Path, icon_svg: Path) -> Path:
         encoding="utf-8",
     )
     return entry
+
+
+_APPIMAGE_VERSION = re.compile(r"Aperture-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)-x86_64\.AppImage$")
+
+
+def appimage_version(path: Path) -> str | None:
+    """Version in a release file name such as `Aperture-0.3.0-x86_64.AppImage`."""
+    match = _APPIMAGE_VERSION.search(path.name)
+    return match[1] if match else None
+
+
+def entry_target() -> Path | None:
+    """The program our desktop entry launches, from its Exec line."""
+    entry = _data_home() / "applications" / DESKTOP_FILE
+    try:
+        text = entry.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = re.search(r"^Exec=(.*)$", text, re.M)
+    if match is None:
+        return None
+    try:
+        words = shlex.split(match[1])
+    except ValueError:
+        return None
+    return Path(words[0]) if words else None
+
+
+def refresh_default_appimage(
+    current: Path, version: str, icon_svg: Path, run: Runner = subprocess.run
+) -> Path | None:
+    """If Aperture is the default player but its entry opens an older or missing AppImage,
+    point the entry at `current` (this AppImage) instead. Returns the path it replaced.
+
+    The default-player choice names the desktop entry, not a file, so rewriting the entry's
+    Exec line moves every "open with default" over without asking the user again. An older
+    AppImage whose version cannot be read from its name is left alone.
+    """
+    from aperture.core.release import is_newer
+
+    target = entry_target()
+    if target is None or target == current or linux_status(run) is not True:
+        return None
+    if target.exists():
+        old = appimage_version(target)
+        if old is None or not is_newer(version, old):
+            return None
+    try:
+        install_appimage_entry(current, icon_svg)
+        apps = str(_data_home() / "applications")
+        run(["update-desktop-database", apps], capture_output=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        log.warning("could not update the desktop entry", exc_info=True)
+        return None
+    return target
 
 
 def linux_claim(icon_svg: Path, run: Runner = subprocess.run) -> str:

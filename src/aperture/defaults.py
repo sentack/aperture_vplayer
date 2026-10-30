@@ -6,12 +6,15 @@ when Aperture can actually claim the role and does not have it yet.
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
+from aperture import __version__
 from aperture.core.schedule import should_ask_default
 from aperture.settings import Settings
 from aperture.system import default_player
@@ -73,6 +76,7 @@ class DefaultPlayerController(QObject):
 
     @Slot()
     def check(self) -> None:
+        self._refresh_appimage()
         self._status = default_player.status()
         self._can_claim = default_player.can_claim()
         now = self._clock()
@@ -83,6 +87,15 @@ class DefaultPlayerController(QObject):
             self._settings.ask_default_last = now
             self._settings.save()
         self.changed.emit()
+
+    def _refresh_appimage(self) -> None:
+        """Keep the default player on the newest AppImage, not the first one installed."""
+        appimage = os.environ.get("APPIMAGE")
+        if not sys.platform.startswith("linux") or not appimage:
+            return
+        replaced = default_player.refresh_default_appimage(Path(appimage), __version__, self._icon)
+        if replaced is not None:
+            self.noticed.emit(f"Videos now open in Aperture {__version__}, not {replaced.name}")
 
     @Slot()
     def claim(self) -> None:

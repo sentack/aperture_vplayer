@@ -1,9 +1,12 @@
 name: CI
 
+# Only for main: pushes to it and pull requests into it. Work-in-progress branches run
+# nothing until they are proposed for main, which keeps Actions minutes for what ships.
 on:
   push:
-    branches: [main, "phase-*"]
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   test:

@@ -23,6 +23,9 @@ Subtitles out of sync? Press **G** to show them earlier or **H** to show them la
 ### Audio boost
 For quiet recordings: the options menu offers **125%, 150% or 200%**. Loud passages are smoothed instead of clipping, so a boost doesn't crackle.
 
+### Your default player stays up to date (Linux)
+If Aperture is your default video player but double-clicking a video still opened an older AppImage, start the new AppImage once: Aperture moves the default over to itself, and your videos open in the new version from then on. It never switches you back to an older copy.
+
 ### Smaller Linux download
 The AppImage is now compressed with xz, so it downloads faster, including through in-app updates. The first launch can take a moment longer while it unpacks.
 
