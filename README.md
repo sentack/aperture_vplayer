@@ -23,6 +23,8 @@ Get the latest build from [Releases](https://github.com/sentack/aperture_vplayer
 
 On X11, Qt needs `libxcb-cursor0` (Debian/Ubuntu: `sudo apt install libxcb-cursor0`).
 
+Keep the AppImage at one place under one name, such as `~/Applications/Aperture.AppImage`. In-app updates replace that file where it is, so menu entries and "default player" settings that point at it keep working.
+
 If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **System Settings → Privacy & Security** and click **Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/Aperture.app`.
 
 ## Features
@@ -66,6 +68,13 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 - Step one frame at a time with `.` and `,`
 - Screenshots (S) go to your Pictures folder, under Aperture
 - Open network streams and direct links: http(s), HLS `.m3u8`, RTSP, RTMP…
+
+**Updates** (Settings → About)
+- See your version and its release date, and check GitHub for a newer one
+- **Update now** downloads in the background and verifies it against the release's checksums before anything is installed
+- Restart to update now, or choose Later and it installs the next time you open Aperture
+- The previous version is kept until the new one has started once; if it doesn't start, the old one comes back
+- On macOS the new disk image opens for you to drag into Applications
 
 **Picking up where you left off**
 - Reopening a file you stopped partway through, including from Recent, asks "Resume from 14:22?" in the corner
@@ -142,9 +151,9 @@ Package locally:
 ```sh
 pip install -e ".[build]"
 pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/ (+ dist/Aperture.app on macOS)
-iscc /DAppVersion=0.4.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
-packaging/linux/build-appimage.sh 0.4.0                     # Linux, needs appimagetool
-packaging/macos/build-dmg.sh 0.4.0                          # macOS, needs Xcode command-line tools
+iscc /DAppVersion=0.5.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
+packaging/linux/build-appimage.sh 0.5.0                     # Linux, needs appimagetool
+packaging/macos/build-dmg.sh 0.5.0                          # macOS, needs Xcode command-line tools
 ```
 
 `build-dmg.sh` ad-hoc signs by default. Set `MACOS_SIGN_IDENTITY` to sign with a Developer ID certificate, and `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` to notarize.
@@ -154,7 +163,7 @@ The icon is generated from code: `python packaging/make_icons.py`.
 ## Releasing
 
 1. Bump `__version__` in `src/aperture/__init__.py`.
-2. Tag and push: `git tag v0.4.0 && git push origin v0.4.0`.
+2. Tag and push: `git tag v0.5.0 && git push origin v0.5.0`.
 
 The release workflow tests, builds the Windows installer, the Linux AppImage and tarball, and the macOS disk image, then publishes them to a GitHub release.
 

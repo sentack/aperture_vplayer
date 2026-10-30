@@ -138,3 +138,11 @@ def test_check_bundle_reports_missing_codecs_and_webengine(tmp_path):
     assert "missing: libavcodec (decoders)" in problems
     assert any(p.startswith("unexpected: Qt WebEngine") for p in problems)
     assert check(tmp_path / "nope") == [f"{tmp_path / 'nope'} is not a directory"]
+
+
+def test_release_publishes_checksums_and_build_info():
+    from aperture.core.release import CHECKSUMS_ASSET
+
+    workflow = (PACKAGING.parent / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    assert f"sha256sum -- * > {CHECKSUMS_ASSET}" in workflow
+    assert "src/aperture/resources/build_info.json" in workflow
