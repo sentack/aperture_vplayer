@@ -37,3 +37,33 @@ jobs:
         run: pytest
         env:
           QT_QPA_PLATFORM: offscreen
+
+      # --- Temporary: find what crashes Qt on macOS in the audio-boost path. ----------------
+      # `shell: bash {0}` (no -e) so one crashing case does not stop the rest.
+      - name: "Diagnose: boost crash probe (macOS)"
+        if: always() && runner.os == 'macOS'
+        shell: bash {0}
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          for case in raw-plain raw-detach-audio raw-buffer raw-both raw-both-player-first \
+                      controller-plain controller-boost; do
+            python -X faulthandler .github/scripts/probe_boost_crash.py "$case"
+            echo "::notice title=probe $case::exit $?"
+          done
+
+      - name: "Diagnose: the crashing UI test alone (macOS)"
+        if: always() && runner.os == 'macOS'
+        shell: bash {0}
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -X faulthandler -m pytest -q -p no:cacheprovider \
+            "tests/test_ui_smoke.py::test_phase_10_commands_without_media"
+          echo "::notice title=test_phase_10_commands_without_media alone::exit $?"
+
+      - name: "Diagnose: macOS crash reports"
+        if: always() && runner.os == 'macOS'
+        run: |
+          sleep 15  # ReportCrash writes a report a few seconds after the process dies
+          python .github/scripts/print_crash_reports.py
