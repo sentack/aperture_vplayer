@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -28,17 +29,38 @@ def _qt_message(mode, context, message: str) -> None:
     logging.getLogger("qt").log(levels.get(mode, logging.WARNING), "%s", message)
 
 
-def load_ui(app, data_dir: Path, on_warnings=None):
+def apply_decoder_choice(hardware_decoding: bool) -> None:
+    """Software-only decoding when hardware decoding is off. Must run before Qt Multimedia starts.
+
+    Qt's FFmpeg backend reads these once: "none" matches no hardware device type, and
+    turning off GPU texture conversion fixes the "sound but a black picture" failure some
+    VP8/VP9 (WebM) streams show with hardware decoders. A variable the user already set wins.
+    """
+    if not hardware_decoding:
+        os.environ.setdefault("QT_FFMPEG_DECODING_HW_DEVICE_TYPES", "none")
+        os.environ.setdefault("QT_DISABLE_HW_TEXTURES_CONVERSION", "1")
+
+
+def restart_command() -> tuple[str, list[str]]:
+    """Program and arguments that start Aperture again, frozen or from source."""
+    if getattr(sys, "frozen", False):
+        return sys.executable, []
+    return sys.executable, ["-m", "aperture"]
+
+
+def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     """Create the controllers, expose them to QML and load the main window.
 
     Returns `(engine, player)`; the engine has no root objects if QML failed to load.
     `on_warnings` receives lists of QQmlError, connected before loading so none are missed.
+    `settings` is read from `data_dir` when not given.
     """
     from PySide6.QtCore import QUrl
     from PySide6.QtQml import QQmlApplicationEngine
 
     from aperture.core import History
     from aperture.defaults import DefaultPlayerController
+    from aperture.keys import KeymapController
     from aperture.player import PlayerController
     from aperture.player.lyrics import LyricsController
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
@@ -46,11 +68,13 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     from aperture.settings import Settings
     from aperture.theme.controller import ThemeController
 
-    settings = Settings(data_dir / "settings.json")
+    settings = settings if settings is not None else Settings(data_dir / "settings.json")
     player = PlayerController(History(data_dir / "history.json"), app)
     appearance = ThemeController(settings, app)
     prefs = PreferencesController(settings, app)
+    keymap = KeymapController(settings, mac=sys.platform == "darwin", parent=app)
     prefs.resetDone.connect(appearance.reload)
+    prefs.resetDone.connect(keymap.reload)
 
     # New sessions start from the saved defaults; the speed in use is remembered as it changes.
     player.volume = settings.default_volume
@@ -86,27 +110,51 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     context.setContextProperty("theme", appearance.palette)
     context.setContextProperty("appearance", appearance)
     context.setContextProperty("prefs", prefs)
+    context.setContextProperty("keymap", keymap)
     context.setContextProperty("thumbs", thumbnails)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
     return engine, player
 
 
 def run(argv: list[str] | None = None) -> int:
-    from PySide6.QtCore import QEvent, QObject, QStandardPaths, QTimer, qInstallMessageHandler
+    from PySide6.QtCore import (
+        QEvent,
+        QObject,
+        QProcess,
+        QStandardPaths,
+        QTimer,
+        qInstallMessageHandler,
+    )
     from PySide6.QtGui import QGuiApplication, QIcon
 
     from aperture.logs import setup_logging
+    from aperture.settings import Settings
+
+    # Names first: they decide the data folder, and settings decide decoding before Qt starts.
+    QGuiApplication.setApplicationName("Aperture")
+    app_data = QStandardPaths.StandardLocation.AppDataLocation
+    data_dir = Path(QStandardPaths.writableLocation(app_data))
+    settings = Settings(data_dir / "settings.json")
+    apply_decoder_choice(settings.hardware_decoding)
 
     app = QGuiApplication(sys.argv if argv is None else argv)
-    app.setApplicationName("Aperture")
     app.setDesktopFileName(DESKTOP_ID)
     app.setWindowIcon(QIcon(str(ICON_PATH)))
 
-    data_dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
     setup_logging(data_dir)
     qInstallMessageHandler(_qt_message)
 
-    engine, player = load_ui(app, data_dir)
+    engine, player = load_ui(app, data_dir, settings=settings)
+
+    def restart() -> None:
+        player.shutdown()
+        program, arguments = restart_command()
+        if QProcess.startDetached(program, arguments):
+            app.quit()
+        else:
+            player.noticed.emit("Couldn't restart Aperture. Close and open it again.")
+
+    engine.rootContext().contextProperty("prefs").restartRequested.connect(restart)
     if not engine.rootObjects():
         log.critical("could not load the user interface from %s", QML_DIR)
         return 1
@@ -128,7 +176,13 @@ def run(argv: list[str] | None = None) -> int:
     file_opener = FileOpenFilter(app)
     app.installEventFilter(file_opener)
 
-    player.open_paths(app.arguments()[1:])
+    from aperture.core.media import is_url
+
+    arguments = app.arguments()[1:]
+    if len(arguments) == 1 and is_url(arguments[0]):
+        player.openUrl(arguments[0])
+    else:
+        player.open_paths(arguments)
     code = app.exec()
     # Tear QML down while `player` is still alive so bindings never see it vanish.
     del engine

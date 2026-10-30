@@ -125,3 +125,69 @@ def test_default_player_prompt_wires_cleanly(ui, app):
     app.processEvents()
     assert not defaults.property("promptVisible")
     assert messages(warnings) == []
+
+
+def test_phase_8_player_commands_without_media(ui, app):
+    engine, player, warnings = ui
+    notices = []
+    player.noticed.connect(notices.append)
+    assert player.openUrl("not a url") is False
+    player.cycleLoop()  # nothing loaded: no loop
+    assert player.property("loopA") == -1 and player.property("loopB") == -1
+    player.stepFrame(1)
+    player.screenshot()
+    app.processEvents()
+    assert "No picture to capture" in notices
+    assert messages(warnings) == []
+
+
+def test_rebinding_shortcuts_through_keymap(ui, app):
+    from PySide6.QtCore import Qt
+
+    engine, _, warnings = ui
+    keymap = engine.rootContext().contextProperty("keymap")
+    ctrl = Qt.KeyboardModifier.ControlModifier.value
+    assert keymap.sequenceFor(Qt.Key.Key_U.value, ctrl) == "Ctrl+U"
+    assert keymap.sequenceFor(Qt.Key.Key_Shift.value, 0) == ""
+    assert "already used for Open URL" in keymap.bind("mute", "Ctrl+U")
+    keymap.unbind("open_url")
+    assert keymap.bind("mute", "Ctrl+U") == ""
+    assert keymap.keys.value("mute") == "Ctrl+U"
+    keymap.resetShortcuts()
+    assert keymap.keys.value("mute") == "M"
+    window = engine.rootObjects()[0]
+    window.setProperty("settingsOpen", True)
+    app.processEvents()
+    window.setProperty("settingsOpen", False)
+    app.processEvents()
+    assert messages(warnings) == []
+
+
+def test_quick_menu_and_url_dialog_open_cleanly(ui, app):
+    from PySide6.QtCore import QObject
+
+    engine, _, warnings = ui
+    window = engine.rootObjects()[0]
+    menu = window.findChild(QObject, "quickMenu")
+    dialog = window.findChild(QObject, "urlDialog")
+    assert menu is not None and dialog is not None
+    menu.open()
+    app.processEvents()
+    assert menu.property("visible")
+    menu.close()
+    dialog.setProperty("open", True)
+    app.processEvents()
+    dialog.setProperty("open", False)
+    app.processEvents()
+    assert messages(warnings) == []
+
+
+def test_hardware_decoding_toggle_flags_restart(ui, app):
+    engine, _, warnings = ui
+    prefs = engine.rootContext().contextProperty("prefs")
+    assert prefs.property("restartNeeded") is False
+    prefs.setProperty("hardwareDecoding", not prefs.property("hardwareDecoding"))
+    assert prefs.property("restartNeeded") is True
+    prefs.setProperty("hardwareDecoding", not prefs.property("hardwareDecoding"))
+    assert prefs.property("restartNeeded") is False
+    assert messages(warnings) == []

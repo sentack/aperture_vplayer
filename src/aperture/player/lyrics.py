@@ -12,6 +12,7 @@ from pathlib import Path
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from aperture.core import LyricLine, LyricsTrack, find_lyrics, format_lrc, is_audio, parse_lyrics
+from aperture.core.media import is_url
 from aperture.core.subtitles import decode
 from aperture.player.urls import to_paths
 
@@ -133,7 +134,8 @@ class LyricsController(QObject):
     # --- internals ---------------------------------------------------------
 
     def _on_media(self, path: str) -> None:
-        self._audio = Path(path) if path and is_audio(path) else None
+        # Streams have no sidecar or tags to read.
+        self._audio = Path(path) if path and is_audio(path) and not is_url(path) else None
         self._set_track([], "")
         if self._audio is None:
             return

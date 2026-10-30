@@ -21,10 +21,14 @@ class PreferencesController(QObject):
     resetDone = Signal()
     # A fixed speed was picked in Settings: it applies to what is playing now, too.
     rateSelected = Signal(float)
+    # The user asked to restart, so a decoder change can take effect.
+    restartRequested = Signal()
 
     def __init__(self, settings: Settings, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._settings = settings
+        # Decoding is chosen once, before Qt Multimedia starts; remember what this run uses.
+        self._running_hardware = settings.hardware_decoding
 
     def _commit(self) -> None:
         self._settings.save()
@@ -108,6 +112,24 @@ class PreferencesController(QObject):
     @Property(list, constant=True)
     def resumeModes(self) -> list[str]:
         return list(RESUME_MODES)
+
+    def _get_hardware(self) -> bool:
+        return self._settings.hardware_decoding
+
+    def _set_hardware(self, value: bool) -> None:
+        if bool(value) != self._settings.hardware_decoding:
+            self._settings.hardware_decoding = bool(value)
+            self._commit()
+
+    hardwareDecoding = Property(bool, _get_hardware, _set_hardware, notify=changed)
+
+    @Property(bool, notify=changed)
+    def restartNeeded(self) -> bool:
+        return self._settings.hardware_decoding != self._running_hardware
+
+    @Slot()
+    def restart(self) -> None:
+        self.restartRequested.emit()
 
     @Slot()
     def reset(self) -> None:

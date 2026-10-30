@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtCore import Property, QObject, QStandardPaths, QTimer, QUrl, Signal, Slot
+from PySide6.QtMultimedia import QAudioOutput, QMediaMetaData, QMediaPlayer
 
 from aperture.core import (
     RATES,
@@ -20,6 +21,16 @@ from aperture.core import (
     format_time,
     step_rate,
 )
+from aperture.core.media import (
+    display_name,
+    display_stem,
+    folder_label,
+    frame_ms,
+    is_url,
+    kind_label,
+    parse_stream_url,
+    screenshot_name,
+)
 from aperture.player.tracks import TrackSelector, is_subtitle
 from aperture.player.urls import to_paths
 
@@ -29,6 +40,8 @@ RESTART_THRESHOLD_MS = 3000
 CHECKPOINT_INTERVAL_MS = 10_000
 # A "Resume from 14:22?" offer left unanswered this long counts as "start over".
 RESUME_OFFER_MS = 12_000
+# An A–B loop shorter than this is almost certainly a double tap, not a loop.
+MIN_LOOP_MS = 500
 
 log = logging.getLogger(__name__)
 
@@ -63,6 +76,7 @@ class PlayerController(QObject):
     mediaLoaded = Signal(str)
     # Dropped or picked .lrc files, for the lyrics controller.
     lyricsDropped = Signal(list)
+    loopChanged = Signal()
     hasVideoChanged = Signal()
     resumeOfferChanged = Signal()
 
@@ -75,6 +89,9 @@ class PlayerController(QObject):
         self._pending_resume: int | None = None  # resume position to seek to once seekable
         self._resume_offer = 0  # saved position the user is being asked about, 0 when none
         self._last_position = 0  # last position seen before a stop rewound to 0
+        self._loop_a = -1  # A–B loop bounds in ms; -1 while unset
+        self._loop_b = -1
+        self._sink = None  # the VideoOutput's QVideoSink, for screenshots
         # What to do with a saved position: ask, resume silently, or always start over.
         self.resume_mode = "ask"
         self._error_title = ""
@@ -176,8 +193,8 @@ class PlayerController(QObject):
             resume = self._history.resume_point(path)
             entries.append(
                 {
-                    "name": path.name,
-                    "folder": path.parent.name,
+                    "name": display_name(path),
+                    "folder": folder_label(path),
                     "path": str(path),
                     "resume": format_time(resume / 1000) if resume else "",
                 }
@@ -193,24 +210,27 @@ class PlayerController(QObject):
     @Property(str, notify=playlistChanged)
     def title(self) -> str:
         current = self._playlist.current
-        return current.stem if current else ""
+        return display_stem(current) if current else ""
 
     @Property(str, notify=playlistChanged)
     def subtitle(self) -> str:
         current = self._playlist.current
         if current is None:
             return ""
-        kind = current.suffix.lstrip(".").upper()
-        return f"{self._playlist.index + 1} of {len(self._playlist)} · {kind}"
+        position = f"{self._playlist.index + 1} of {len(self._playlist)}"
+        kind = kind_label(current)
+        return f"{position} · {kind}" if kind else position
 
     @Property(QUrl, notify=playlistChanged)
     def mediaFolder(self) -> QUrl:
         """Folder of the loaded file, where subtitle pickers start."""
-        return QUrl.fromLocalFile(str(self._loaded.parent)) if self._loaded else QUrl()
+        if self._loaded is None or is_url(self._loaded):
+            return QUrl()
+        return QUrl.fromLocalFile(str(self._loaded.parent))
 
     @Property(list, notify=playlistChanged)
     def playlist(self) -> list[str]:
-        return [path.name for path in self._playlist.items]
+        return [display_name(item) for item in self._playlist.items]
 
     @Property(int, notify=playlistChanged)
     def currentIndex(self) -> int:
@@ -233,6 +253,7 @@ class PlayerController(QObject):
     @Slot(QObject)
     def attachVideoOutput(self, output: QObject) -> None:
         self._player.setVideoOutput(output)
+        self._sink = output.property("videoSink")
 
     def open_paths(self, paths: Iterable[Path | str]) -> None:
         """Replace the playlist and start its first file. Folders expand to their videos."""
@@ -298,6 +319,9 @@ class PlayerController(QObject):
 
     @Slot(str)
     def openRecent(self, path: str) -> None:
+        if is_url(path):
+            self.openUrl(path)
+            return
         if Path(path).is_file():
             self.open_paths([path])
             return
@@ -392,6 +416,110 @@ class PlayerController(QObject):
         """Start over: the saved point is replaced by the next checkpoint."""
         self._take_offer()
 
+    @Slot(str, result=bool)
+    def openUrl(self, text: str) -> bool:
+        """Play a network stream. False, with a notice, if `text` is not a stream address."""
+        url = parse_stream_url(text)
+        if url is None:
+            self.noticed.emit("That doesn't look like a video address (http, https, rtsp…)")
+            return False
+        self._checkpoint()
+        self._playlist.clear()
+        self._playlist.add([url])
+        self._load(0)
+        return True
+
+    # --- A–B loop ----------------------------------------------------------
+
+    @Property(int, notify=loopChanged)
+    def loopA(self) -> int:
+        return self._loop_a
+
+    @Property(int, notify=loopChanged)
+    def loopB(self) -> int:
+        return self._loop_b
+
+    @Slot()
+    def cycleLoop(self) -> None:
+        """First press sets A, the second sets B and starts looping, the third clears."""
+        if self._loop_a < 0:
+            self.setLoopA()
+        elif self._loop_b < 0:
+            self.setLoopB()
+        else:
+            self.clearLoop()
+
+    @Slot()
+    def setLoopA(self) -> None:
+        if self._playlist.current is None:
+            return
+        self._loop_a = self._player.position()
+        if 0 <= self._loop_b <= self._loop_a + MIN_LOOP_MS:
+            self._loop_b = -1
+        self.loopChanged.emit()
+        self.noticed.emit(f"Loop start (A) at {format_time(self._loop_a / 1000)}")
+
+    @Slot()
+    def setLoopB(self) -> None:
+        position = self._player.position()
+        if self._loop_a < 0 or position < self._loop_a + MIN_LOOP_MS:
+            self.noticed.emit("Set the loop end (B) after its start (A)")
+            return
+        self._loop_b = position
+        self._player.setPosition(self._loop_a)
+        self.loopChanged.emit()
+        a, b = format_time(self._loop_a / 1000), format_time(self._loop_b / 1000)
+        self.noticed.emit(f"Looping {a} – {b}")
+
+    @Slot()
+    def clearLoop(self) -> None:
+        if self._loop_a < 0 and self._loop_b < 0:
+            return
+        self._loop_a = self._loop_b = -1
+        self.loopChanged.emit()
+        self.noticed.emit("Loop off")
+
+    # --- frames ------------------------------------------------------------
+
+    @Slot(int)
+    def stepFrame(self, frames: int) -> None:
+        """Pause and move `frames` frames (negative: back), using the file's frame rate."""
+        if not self._player.isSeekable():
+            return
+        if self.playing:
+            self._player.pause()
+        rate = self._player.metaData().value(QMediaMetaData.Key.VideoFrameRate)
+        try:
+            step = frame_ms(float(rate)) if rate is not None else frame_ms(None)
+        except (TypeError, ValueError):
+            step = frame_ms(None)
+        target = self._player.position() + round(frames * step)
+        target = min(max(0, target), self._player.duration())
+        self._player.setPosition(target)
+        self.noticed.emit(f"Frame {format_time(target / 1000)}.{target % 1000:03d}")
+
+    @Slot()
+    def screenshot(self) -> None:
+        """Save the frame on screen as a PNG in Pictures/Aperture."""
+        frame = self._sink.videoFrame() if self._sink is not None else None
+        if frame is None or not frame.isValid() or not self._player.hasVideo():
+            self.noticed.emit("No picture to capture")
+            return
+        image = frame.toImage()
+        pictures = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.PicturesLocation)
+        folder = Path(pictures or Path.home()) / "Aperture"
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            log.warning("cannot create %s", folder, exc_info=True)
+            self.noticed.emit("Couldn't save the screenshot")
+            return
+        target = folder / screenshot_name(self.title, self._player.position(), datetime.now())
+        if image.isNull() or not image.save(str(target), "PNG"):
+            self.noticed.emit("Couldn't save the screenshot")
+            return
+        self.noticed.emit(f"Screenshot saved to {folder.name}/{target.name}")
+
     @Slot()
     def shutdown(self) -> None:
         """Persist the resume point; call before the app quits."""
@@ -432,9 +560,12 @@ class PlayerController(QObject):
             self._resume_offer = saved
             self._offer_timer.start()
             self.resumeOfferChanged.emit()
-        self._player.setSource(QUrl.fromLocalFile(str(path)))
+        if self._loop_a >= 0 or self._loop_b >= 0:
+            self._loop_a = self._loop_b = -1
+            self.loopChanged.emit()
+        self._player.setSource(QUrl(path) if is_url(path) else QUrl.fromLocalFile(str(path)))
         self._player.setPlaybackRate(self._rate)
-        self.tracks.reset(path)
+        self.tracks.reset(None if is_url(path) else path)
         self.mediaLoaded.emit(str(path))
         self._player.play()
         self._history.save()
@@ -479,6 +610,8 @@ class PlayerController(QObject):
     def _on_position(self, position: int) -> None:
         if self._player.playbackState() != QMediaPlayer.PlaybackState.StoppedState:
             self._last_position = position
+        if self._loop_b >= 0 and position >= self._loop_b:
+            self._player.setPosition(self._loop_a)
         self.positionChanged.emit()
 
     def _apply_resume(self) -> None:
@@ -527,7 +660,7 @@ class PlayerController(QObject):
         if error == QMediaPlayer.Error.NoError:
             return
         log.warning("playback error for %s: %s (%s)", self._loaded, detail, error)
-        name = self._loaded.name if self._loaded is not None else "this file"
+        name = display_name(self._loaded) if self._loaded is not None else "this file"
         friendly = describe_error(_ERROR_KINDS.get(error, "other"), name)
         self._set_error(friendly.title, friendly.message)
 

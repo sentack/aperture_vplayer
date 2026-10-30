@@ -150,3 +150,31 @@ def test_settings_resume_mode(tmp_path):
     assert Settings(path).resume_mode == "never"
     with pytest.raises(ValueError):
         settings.resume_mode = "sometimes"
+
+
+def test_decoder_choice_sets_software_decoding(monkeypatch):
+    import os
+
+    from aperture.app import apply_decoder_choice
+
+    # A private copy: the variables must not leak into the UI tests that run later.
+    environ = {k: v for k, v in os.environ.items() if not k.startswith("QT_")}
+    monkeypatch.setattr(os, "environ", environ)
+    apply_decoder_choice(True)
+    assert "QT_FFMPEG_DECODING_HW_DEVICE_TYPES" not in os.environ
+    apply_decoder_choice(False)
+    assert os.environ["QT_FFMPEG_DECODING_HW_DEVICE_TYPES"] == "none"
+    assert os.environ["QT_DISABLE_HW_TEXTURES_CONVERSION"] == "1"
+
+
+def test_settings_shortcuts_and_hardware(tmp_path):
+    path = tmp_path / "settings.json"
+    settings = Settings(path)
+    assert settings.shortcuts == {} and settings.hardware_decoding is True
+    settings.shortcuts = {"mute": "Ctrl+M2"}
+    settings.hardware_decoding = False
+    settings.save()
+    loaded = Settings(path)
+    assert loaded.shortcuts == {"mute": "Ctrl+M2"} and loaded.hardware_decoding is False
+    with pytest.raises(ValueError):
+        settings.shortcuts = {"unknown_action": "X"}

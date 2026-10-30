@@ -1,30 +1,32 @@
-# Aperture 0.3.0
+# Aperture 0.4.0
 
-Lyrics, audio files, a rebuilt Settings, and smaller downloads.
+A right-click menu, precise playback controls, network streams, and shortcuts you can rebind.
 
 ## Downloads
-- **Windows 10/11 (x64):** `Aperture-0.3.0-windows-x64-setup.exe`
-- **macOS 12+ (Apple Silicon):** `Aperture-0.3.0-macos-arm64.dmg`
-- **Linux (x86-64):** `Aperture-0.3.0-x86_64.AppImage`, or `Aperture-0.3.0-linux-x64.tar.xz`
+- **Windows 10/11 (x64):** `Aperture-0.4.0-windows-x64-setup.exe`
+- **macOS 12+ (Apple Silicon):** `Aperture-0.4.0-macos-arm64.dmg`
+- **Linux (x86-64):** `Aperture-0.4.0-x86_64.AppImage`, or `Aperture-0.4.0-linux-x64.tar.xz`
 
 ## New
-- **Audio files:** MP3, FLAC, M4A, Ogg, Opus, WAV and more play alongside video.
-- **Synced lyrics:** Spotify-style lyrics that scroll with the song. Click a line to jump to it. Loaded from a `.lrc` / `.txt` next to the track or from the file's tags.
-- **Lyrics editor:** write or paste lyrics, tap along to sync each line, then save a `.lrc` and embed it in MP3, FLAC, M4A, Ogg or Opus tags.
-- **Settings modal:** General, Playback, Appearance, Subtitles and Keyboard shortcuts pages.
-- **Resume prompt:** reopening a file you left partway, including from Recent, asks "Resume from 14:22?" in the bottom-right. Choose Ask, Resume or Start over in Settings → Playback.
-- **Default player:** Aperture offers, at most once every 6 hours, to become your default video player. Turn it off in Settings → General.
+- **Quick options menu:** right-click the video, or press Shift+F10 or the Menu key. Play/pause, open a file or URL, A–B loop, screenshot, playback speed, audio and subtitle tracks, fullscreen, settings.
+- **A–B loop (L):** first press sets the start, second sets the end and starts looping, third clears. The loop shows on the seek bar.
+- **Frame stepping (`.` / `,`):** pause and move one frame at a time.
+- **Screenshots (S):** saves the current frame as a PNG in Pictures/Aperture.
+- **Open URL (Ctrl+U):** play direct links and streams: http(s), HLS `.m3u8`, RTSP, RTMP and more.
+- **Rebindable shortcuts:** Settings → Keyboard shortcuts lists every action. Click a key and press a new one. Each key does exactly one thing: Aperture refuses a key already in use and names the action using it. System shortcuts like Alt+F4 are blocked. Unbind any action, or reset all shortcuts at once.
+- **Hardware decoding switch:** Settings → Playback. Turn it off if a video plays sound over a black picture; restart from the same page.
 
 ## Fixed
-- Recent files now resume where you stopped. Closing the window used to save position 0.
-- Choosing a speed in Settings now changes the speed of what's playing, and it stays across files.
-- Playlist: single-click selects, double-click plays.
-- Windows installer no longer fails on a corrupted `Qt6WebEngineCore.dll`. Unused Qt add-ons are left out of the build.
+- WebM (VP8/VP9) and other files playing audio over a black picture: switch hardware decoding off for those. Every build is now also checked for the complete FFmpeg decoder set before it is packaged.
 
-## Smaller downloads
-- Unused Qt add-ons removed from every build.
-- Every release is compressed: LZMA2 ultra for the Windows installer, zstd for the AppImage, xz for the tarball, LZMA for the macOS disk image.
+## Changed shortcuts
+Each action now has one key, so a few defaults moved:
+- Seek 10 s is now **Ctrl+← / Ctrl+→**, because L is the A–B loop.
+- Play/pause is **Space** only (K removed), fullscreen is **F** only (F11 removed).
+
+Rebind any of them in Settings → Keyboard shortcuts.
 
 ## Known limitations
+- Frame stepping uses the file's reported frame rate; files that report none step at 30 fps.
+- Thumbnails and lyrics are for local files, not streams.
 - macOS builds target Apple Silicon and are ad-hoc signed unless the signing secrets are set.
-- On Windows, "Make default" opens Settings → Default apps, where you confirm Aperture. Windows does not let apps set this themselves.

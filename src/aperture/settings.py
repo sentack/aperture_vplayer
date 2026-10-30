@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from aperture.core import RATES
+from aperture.core.keymap import ACTION_IDS
 from aperture.core.storage import read_json, write_json
 from aperture.theme import ACCENTS, DEFAULT_ACCENT
 
@@ -31,6 +32,8 @@ DEFAULTS: dict[str, object] = {
     "resume": "ask",
     "ask_default": True,
     "ask_default_last": 0.0,  # Unix time of the last "make Aperture default?" prompt
+    "shortcuts": {},  # action id -> key, only where it differs from the default ("" = unbound)
+    "hardware_decoding": True,
 }
 
 
@@ -60,6 +63,12 @@ def _valid(key: str, value: object) -> bool:
             return isinstance(value, bool)
         case "ask_default_last":
             return _number(value) and value >= 0
+        case "shortcuts":
+            return isinstance(value, dict) and all(
+                k in ACTION_IDS and isinstance(v, str) for k, v in value.items()
+            )
+        case "hardware_decoding":
+            return isinstance(value, bool)
     return False
 
 
@@ -89,6 +98,8 @@ class Settings:
     resume_mode = _field("resume")
     ask_default = _field("ask_default")
     ask_default_last = _field("ask_default_last")
+    shortcuts = _field("shortcuts")
+    hardware_decoding = _field("hardware_decoding")
 
     @property
     def start_rate(self) -> float:

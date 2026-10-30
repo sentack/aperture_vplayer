@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 
+from aperture.core.media import is_url
+
 
 class Playlist:
     def __init__(self) -> None:
@@ -38,7 +40,7 @@ class Playlist:
     def add(self, paths: Iterable[Path | str]) -> int:
         """Append paths, cursor untouched. Returns count added."""
         before = len(self._items)
-        self._items.extend(Path(p) for p in paths)
+        self._items.extend(p if is_url(p) else Path(p) for p in paths)
         return len(self._items) - before
 
     def select(self, index: int) -> Path:
