@@ -130,6 +130,20 @@ Rectangle {
             value: player.duration > 0 ? player.position / player.duration : 0
             onMoved: value => player.seek(Math.round(value * player.duration))
 
+            // A–B loop: a tinted span between the two points, or a tick while only A is set.
+            Rectangle {
+                readonly property real scale_: player.duration > 0 ? seekSlider.width / player.duration : 0
+                visible: player.loopA >= 0 && scale_ > 0
+                x: player.loopA * scale_
+                width: player.loopB >= 0 ? Math.max(2, (player.loopB - player.loopA) * scale_) : 2
+                height: 14
+                anchors.verticalCenter: parent.verticalCenter
+                radius: 3
+                color: Qt.rgba(bar.accent.r, bar.accent.g, bar.accent.b, player.loopB >= 0 ? 0.28 : 1)
+                border.width: player.loopB >= 0 ? 1 : 0
+                border.color: bar.accent
+            }
+
             SeekPreview {
                 readonly property real pointerX: seekSlider.hoverValue * seekSlider.width
                 x: Math.max(-40, Math.min(seekSlider.width - width + 40, pointerX - width / 2))

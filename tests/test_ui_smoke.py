@@ -161,3 +161,22 @@ def test_rebinding_shortcuts_through_keymap(ui, app):
     window.setProperty("settingsOpen", False)
     app.processEvents()
     assert messages(warnings) == []
+
+
+def test_quick_menu_and_url_dialog_open_cleanly(ui, app):
+    from PySide6.QtCore import QObject
+
+    engine, _, warnings = ui
+    window = engine.rootObjects()[0]
+    menu = window.findChild(QObject, "quickMenu")
+    dialog = window.findChild(QObject, "urlDialog")
+    assert menu is not None and dialog is not None
+    menu.open()
+    app.processEvents()
+    assert menu.property("visible")
+    menu.close()
+    dialog.setProperty("open", True)
+    app.processEvents()
+    dialog.setProperty("open", False)
+    app.processEvents()
+    assert messages(warnings) == []

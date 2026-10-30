@@ -148,15 +148,25 @@ Window {
 
     KeyBindings {
         fullscreen: root.fullscreen
-        modalOpen: root.settingsOpen || lyricsEditor.open
+        modalOpen: root.settingsOpen || lyricsEditor.open || urlDialog.open
         onModalClosed: {
             root.settingsOpen = false
             lyricsEditor.open = false
+            urlDialog.open = false
         }
         onSettingsToggled: root.toggleSettings()
         onFullscreenToggled: root.toggleFullscreen()
         onOpenRequested: root.chooseFiles(false)
+        onOpenUrlRequested: urlDialog.begin()
         onMiniToggled: root.toggleMini()
+        // From the keyboard the menu opens where the pointer last was, else mid-window.
+        onContextMenuRequested: root.showMenu(pointer.point.position.x > 0 ? pointer.point.position
+                                                                         : Qt.point(stage.width / 2, stage.height / 2))
+    }
+
+    function showMenu(position) {
+        wake()
+        quickMenu.popup(position.x, position.y)
     }
 
     Connections {
@@ -169,6 +179,7 @@ Window {
         anchors.fill: parent
 
         HoverHandler {
+            id: pointer
             cursorShape: root.chromeVisible ? Qt.ArrowCursor : Qt.BlankCursor
             onPointChanged: root.wake()
         }
@@ -203,6 +214,22 @@ Window {
                 onSingleTapped: player.togglePlay()
                 onDoubleTapped: root.mini ? root.toggleMini() : root.toggleFullscreen()
             }
+
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: eventPoint => root.showMenu(eventPoint.position)
+            }
+        }
+
+        ContextMenu {
+            id: quickMenu
+            objectName: "quickMenu"
+            fullscreen: root.fullscreen
+            onOpenFilesRequested: root.chooseFiles(false)
+            onOpenUrlRequested: urlDialog.begin()
+            onSubtitleFileRequested: subtitleDialog.open()
+            onFullscreenRequested: root.toggleFullscreen()
+            onSettingsRequested: root.toggleSettings()
         }
 
         Column {
@@ -493,6 +520,11 @@ Window {
     }
 
     LyricsEditor { id: lyricsEditor }
+
+    OpenUrlDialog {
+        id: urlDialog
+        objectName: "urlDialog"
+    }
 
     SettingsDialog {
         open: root.settingsOpen && !root.mini
