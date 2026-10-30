@@ -20,28 +20,39 @@ def app():
     return QGuiApplication.instance() or QGuiApplication([])
 
 
-@pytest.fixture
-def ui(app, tmp_path):
+def _address(obj) -> int:
+    import shiboken6
+
+    return shiboken6.getCppPointer(obj)[0]  # Qt objects are not all hashable; addresses are
+
+
+def _flush_deletes(app) -> None:
     from PySide6.QtCore import QCoreApplication, QEvent
 
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    app.processEvents()
+
+
+@pytest.fixture
+def ui(app, tmp_path):
     from aperture.app import load_ui
 
-    before = set(app.children())
+    before = {_address(child) for child in app.children()}
     warnings = []
     engine, player = load_ui(app, tmp_path, on_warnings=lambda errors: warnings.extend(errors))
     app.processEvents()
     yield engine, player, warnings
     for window in engine.rootObjects():
         window.close()
-    app.processEvents()
     # load_ui parents its controllers (players, decoders) to the app. Destroy each test's set
     # now, while Qt is fully running: left to interpreter exit, macOS crashes tearing down
-    # dozens of media players at once.
+    # dozens of media players at once. The QML goes first, so no binding sees a deleted object.
     engine.deleteLater()
-    for child in set(app.children()) - before:
-        child.deleteLater()
-    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-    app.processEvents()
+    _flush_deletes(app)
+    for child in app.children():
+        if _address(child) not in before:
+            child.deleteLater()
+    _flush_deletes(app)
 
 
 def messages(warnings):
