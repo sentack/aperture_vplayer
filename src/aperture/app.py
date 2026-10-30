@@ -39,6 +39,7 @@ def load_ui(app, data_dir: Path, on_warnings=None):
 
     from aperture.core import History
     from aperture.defaults import DefaultPlayerController
+    from aperture.keys import KeymapController
     from aperture.player import PlayerController
     from aperture.player.lyrics import LyricsController
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
@@ -50,7 +51,9 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     player = PlayerController(History(data_dir / "history.json"), app)
     appearance = ThemeController(settings, app)
     prefs = PreferencesController(settings, app)
+    keymap = KeymapController(settings, mac=sys.platform == "darwin", parent=app)
     prefs.resetDone.connect(appearance.reload)
+    prefs.resetDone.connect(keymap.reload)
 
     # New sessions start from the saved defaults; the speed in use is remembered as it changes.
     player.volume = settings.default_volume
@@ -86,6 +89,7 @@ def load_ui(app, data_dir: Path, on_warnings=None):
     context.setContextProperty("theme", appearance.palette)
     context.setContextProperty("appearance", appearance)
     context.setContextProperty("prefs", prefs)
+    context.setContextProperty("keymap", keymap)
     context.setContextProperty("thumbs", thumbnails)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
     return engine, player

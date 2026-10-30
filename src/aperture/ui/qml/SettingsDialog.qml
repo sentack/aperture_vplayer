@@ -1,6 +1,5 @@
 import QtQuick
 import "Icons.js" as Icons
-import "Shortcuts.js" as Shortcuts
 
 // Settings, as a modal opened from the gear at the right edge of the control bar.
 // Categories on the left, one page on the right. Every control changes something you can
@@ -437,63 +436,61 @@ Modal {
             Page {
                 index: 4
 
+                Section {
+                    title: "Keyboard shortcuts"
+
+                    Note { text: "Click a key, then press the new combination. Each key can do one thing; free a key with × before reusing it." }
+
+                    PillButton {
+                        text: "Reset shortcuts"
+                        onClicked: keymap.resetShortcuts()
+                    }
+                }
+
                 Repeater {
-                    model: Shortcuts.groups
+                    model: keymap.groups
 
                     Section {
                         id: group
 
-                        required property var modelData
+                        required property string modelData
 
-                        title: modelData.title
+                        title: modelData
 
                         Repeater {
-                            model: group.modelData.items
+                            model: keymap.actions.filter(action => action.group === group.modelData)
 
-                            Item {
-                                id: shortcut
+                            ShortcutRow {}
+                        }
+                    }
+                }
 
-                                required property var modelData
+                Section {
+                    title: "Built in"
 
-                                width: group.width
-                                height: 26
+                    Repeater {
+                        model: keymap.fixed
 
-                                UiText {
-                                    anchors { left: parent.left; right: keyRow.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                                    text: shortcut.modelData.action
-                                    color: theme.text_primary
-                                }
+                        Item {
+                            id: fixedRow
 
-                                Row {
-                                    id: keyRow
-                                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                                    spacing: 4
+                            required property var modelData
 
-                                    Repeater {
-                                        model: shortcut.modelData.keys
+                            width: parent.width
+                            height: 26
 
-                                        Rectangle {
-                                            required property string modelData
+                            UiText {
+                                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                                text: fixedRow.modelData.label
+                                color: theme.text_secondary
+                            }
 
-                                            width: keyText.implicitWidth + 14
-                                            height: 22
-                                            radius: 6
-                                            color: theme.chip_bg
-                                            border.width: 1
-                                            border.color: theme.divider
-
-                                            UiText {
-                                                id: keyText
-                                                anchors.centerIn: parent
-                                                text: Shortcuts.label(parent.modelData, dialog.mac)
-                                                font.pixelSize: 11
-                                                font.weight: Font.DemiBold
-                                                color: theme.text_secondary
-                                                elide: Text.ElideNone
-                                            }
-                                        }
-                                    }
-                                }
+                            UiText {
+                                anchors { right: parent.right; rightMargin: 34; verticalCenter: parent.verticalCenter }
+                                text: fixedRow.modelData.key
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                color: theme.text_tertiary
                             }
                         }
                     }

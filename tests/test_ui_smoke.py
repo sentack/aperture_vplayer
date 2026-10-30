@@ -139,3 +139,25 @@ def test_phase_8_player_commands_without_media(ui, app):
     app.processEvents()
     assert "No picture to capture" in notices
     assert messages(warnings) == []
+
+
+def test_rebinding_shortcuts_through_keymap(ui, app):
+    from PySide6.QtCore import Qt
+
+    engine, _, warnings = ui
+    keymap = engine.rootContext().contextProperty("keymap")
+    ctrl = Qt.KeyboardModifier.ControlModifier.value
+    assert keymap.sequenceFor(Qt.Key.Key_U.value, ctrl) == "Ctrl+U"
+    assert keymap.sequenceFor(Qt.Key.Key_Shift.value, 0) == ""
+    assert "already used for Open URL" in keymap.bind("mute", "Ctrl+U")
+    keymap.unbind("open_url")
+    assert keymap.bind("mute", "Ctrl+U") == ""
+    assert keymap.keys.value("mute") == "Ctrl+U"
+    keymap.resetShortcuts()
+    assert keymap.keys.value("mute") == "M"
+    window = engine.rootObjects()[0]
+    window.setProperty("settingsOpen", True)
+    app.processEvents()
+    window.setProperty("settingsOpen", False)
+    app.processEvents()
+    assert messages(warnings) == []
