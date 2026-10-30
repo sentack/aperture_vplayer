@@ -128,7 +128,13 @@ def run(argv: list[str] | None = None) -> int:
     file_opener = FileOpenFilter(app)
     app.installEventFilter(file_opener)
 
-    player.open_paths(app.arguments()[1:])
+    from aperture.core.media import is_url
+
+    arguments = app.arguments()[1:]
+    if len(arguments) == 1 and is_url(arguments[0]):
+        player.openUrl(arguments[0])
+    else:
+        player.open_paths(arguments)
     code = app.exec()
     # Tear QML down while `player` is still alive so bindings never see it vanish.
     del engine

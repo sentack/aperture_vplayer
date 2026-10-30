@@ -17,6 +17,7 @@ from PySide6.QtQml import QQmlImageProviderBase
 from PySide6.QtQuick import QQuickImageProvider
 
 from aperture.core import thumbnail_bucket
+from aperture.core.media import is_url
 
 PROVIDER_ID = "thumbs"
 THUMB_WIDTH = 192
@@ -77,7 +78,8 @@ class ThumbnailService(QObject):
     def setFile(self, path: str) -> None:
         """Follow the main player's file. Decoding starts lazily on the first hover."""
         self._generation += 1
-        self._file = Path(path) if path else None
+        # A second decoder on a network stream would double the download: local files only.
+        self._file = Path(path) if path and not is_url(path) else None
         self._ready = False
         self._wanted = self._in_flight = None
         self._timeout.stop()

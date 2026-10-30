@@ -125,3 +125,17 @@ def test_default_player_prompt_wires_cleanly(ui, app):
     app.processEvents()
     assert not defaults.property("promptVisible")
     assert messages(warnings) == []
+
+
+def test_phase_8_player_commands_without_media(ui, app):
+    engine, player, warnings = ui
+    notices = []
+    player.noticed.connect(notices.append)
+    assert player.openUrl("not a url") is False
+    player.cycleLoop()  # nothing loaded: no loop
+    assert player.property("loopA") == -1 and player.property("loopB") == -1
+    player.stepFrame(1)
+    player.screenshot()
+    app.processEvents()
+    assert "No picture to capture" in notices
+    assert messages(warnings) == []
