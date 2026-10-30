@@ -20,12 +20,6 @@ def app():
     return QGuiApplication.instance() or QGuiApplication([])
 
 
-def _address(obj) -> int:
-    import shiboken6
-
-    return shiboken6.getCppPointer(obj)[0]  # Qt objects are not all hashable; addresses are
-
-
 def _flush_deletes(app) -> None:
     from PySide6.QtCore import QCoreApplication, QEvent
 
@@ -37,7 +31,6 @@ def _flush_deletes(app) -> None:
 def ui(app, tmp_path):
     from aperture.app import load_ui
 
-    before = {_address(child) for child in app.children()}
     warnings = []
     engine, player = load_ui(app, tmp_path, on_warnings=lambda errors: warnings.extend(errors))
     app.processEvents()
@@ -47,10 +40,12 @@ def ui(app, tmp_path):
     # load_ui parents its controllers (players, decoders) to the app. Destroy each test's set
     # now, while Qt is fully running: left to interpreter exit, macOS crashes tearing down
     # dozens of media players at once. The QML goes first, so no binding sees a deleted object.
+    # Only Aperture's own controllers go: the app also owns Qt internals (input devices, popup
+    # helpers) that Qt creates on demand and must not be deleted.
     engine.deleteLater()
     _flush_deletes(app)
     for child in app.children():
-        if _address(child) not in before:
+        if type(child).__module__.startswith("aperture."):
             child.deleteLater()
     _flush_deletes(app)
 
