@@ -180,6 +180,32 @@ T.Menu {
     }
 
     SubMenu_ {
+        id: chapterMenu
+        title: "Chapters"
+
+        Item_ {
+            text: "No chapters in this file"
+            enabled: false
+            visible: player.chapters.length === 0
+            height: visible ? implicitHeight : 0
+        }
+
+        Instantiator {
+            model: player.chapters
+            delegate: Item_ {
+                required property int index
+                required property var modelData
+                text: `${index + 1}. ${modelData.title}`
+                checkable: true
+                checked: player.currentChapter === index
+                onTriggered: player.seekChapter(index)
+            }
+            onObjectAdded: (index, object) => chapterMenu.insertItem(index + 1, object)
+            onObjectRemoved: (index, object) => chapterMenu.removeItem(object)
+        }
+    }
+
+    SubMenu_ {
         id: subtitleMenu
         title: "Subtitles"
 

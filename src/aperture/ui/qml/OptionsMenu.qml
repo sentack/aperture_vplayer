@@ -157,5 +157,88 @@ GlassPopup {
                 }
             }
         }
+
+        SectionLabel { text: "Subtitle timing" }
+
+        // Fine-tune .srt/.vtt timing (also G / H).
+        Item {
+            width: parent.width
+            height: 30
+
+            UiText {
+                anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                text: `Delay ${(tracks.subtitleDelay / 1000).toFixed(1)} s`
+                font.features: ({ "tnum": 1 })
+                color: theme.text_secondary
+            }
+
+            Row {
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                spacing: 4
+
+                PillButton {
+                    implicitHeight: 28
+                    text: "−"
+                    onClicked: tracks.nudgeSubtitles(-100)
+                }
+
+                PillButton {
+                    implicitHeight: 28
+                    text: "+"
+                    onClicked: tracks.nudgeSubtitles(100)
+                }
+
+                PillButton {
+                    implicitHeight: 28
+                    text: "0"
+                    visible: tracks.subtitleDelay !== 0
+                    onClicked: tracks.resetSubtitleDelay()
+                }
+            }
+        }
+
+        SectionLabel { text: "Audio boost" }
+
+        Row {
+            spacing: 6
+
+            Repeater {
+                model: player.boostLevels
+
+                Rectangle {
+                    id: boostPill
+
+                    required property real modelData
+                    readonly property bool active: Math.abs(player.audioBoost - modelData) < 0.001
+
+                    width: 44
+                    height: 30
+                    radius: 15
+                    color: active ? theme.accent : boostArea.containsMouse ? theme.track_bg : theme.chip_bg
+
+                    Accessible.role: Accessible.RadioButton
+                    Accessible.name: `Audio boost ${Math.round(modelData * 100)} percent`
+                    Accessible.checked: active
+                    Accessible.onPressAction: player.audioBoost = modelData
+
+                    UiText {
+                        anchors.centerIn: parent
+                        text: `${Math.round(boostPill.modelData * 100)}%`
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        color: boostPill.active ? "white" : theme.text_secondary
+                        elide: Text.ElideNone
+                    }
+
+                    MouseArea {
+                        id: boostArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: player.audioBoost = boostPill.modelData
+                    }
+                }
+            }
+        }
     }
 }

@@ -230,3 +230,16 @@ def test_phase_10_commands_without_media(ui, app):
     assert player.property("audioBoost") == 1.0
     app.processEvents()
     assert messages(warnings) == []
+
+
+def test_menus_with_chapters_and_boost_open_cleanly(ui, app):
+    from PySide6.QtCore import QObject
+
+    engine, _, warnings = ui
+    window = engine.rootObjects()[0]
+    menu = window.findChild(QObject, "quickMenu")
+    menu.open()
+    app.processEvents()
+    menu.close()
+    app.processEvents()
+    assert messages(warnings) == []
