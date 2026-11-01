@@ -132,4 +132,8 @@ class KeymapController(QObject):
     def _publish(self) -> None:
         for action_id, key in self._keymap.keys().items():
             self._keys.insert(action_id, key)
+        # The Settings rows are rebuilt from `actions` now, so the row that was listening
+        # is gone and cannot end the capture itself. A capture left on disables every
+        # shortcut until restart, so it always ends here.
+        self._set_capturing(False)
         self.changed.emit()

@@ -16,6 +16,9 @@ Modal {
     cardWidth: 760
     cardHeight: 560
 
+    // A key chip still listening when Settings closes must not keep shortcuts switched off.
+    onOpenChanged: if (!open) keymap.capturing = false
+
     // One choice out of a few, as pills. A value shows as `labels[value]`, else value + suffix.
     component Segmented: Flow {
         id: segmented
