@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic as T
 import "Icons.js" as Icons
 
 // Glass side sheet listing the queue. Click a row to play it, hover to remove it.
@@ -69,6 +70,7 @@ Rectangle {
         boundsBehavior: Flickable.StopAtBounds
         model: player.playlist
         currentIndex: player.currentIndex
+        T.ScrollBar.vertical: GlassScrollBar {}
 
         // Single click selects a row; only a double click plays it.
         property int selectedIndex: -1

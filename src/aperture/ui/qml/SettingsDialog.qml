@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic as T
 import "Icons.js" as Icons
 
 // Settings, as a modal opened from the gear at the right edge of the control bar.
@@ -205,6 +206,8 @@ Modal {
         clip: true
         contentHeight: pages.implicitHeight + 28
         boundsBehavior: Flickable.StopAtBounds
+        // Pages taller than the card (Keyboard shortcuts, About) scroll with a visible bar.
+        T.ScrollBar.vertical: GlassScrollBar { rightPadding: 6 }
 
         Column {
             id: pages
