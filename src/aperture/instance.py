@@ -31,6 +31,10 @@ log = logging.getLogger(__name__)
 
 LOCK_FILE = "instance.lock"
 CONNECT_TIMEOUT_MS = 1000
+# How long a launch waits for the running instance to take its files. Windows pipes have no
+# buffer (Qt creates them with size 0), so the write only completes when the instance reads,
+# and an instance still loading its window reads only once that is done.
+HANDOFF_TIMEOUT_S = 8.0
 # A launch that cannot reach the instance holding the lock keeps retrying for this long (it
 # may still be starting up), then runs on its own rather than not at all.
 CLAIM_TIMEOUT_S = 10.0
@@ -94,10 +98,13 @@ class InstanceServer(QObject):
 
 
 def forward(name: str, args: Sequence[str]) -> bool:
-    """Send `args` to the running instance. False if there is none to receive them."""
+    """Hand `args` to the running instance. False if none is running, or it never took them."""
     socket = QLocalSocket()
     socket.connectToServer(name)
     if not socket.waitForConnected(CONNECT_TIMEOUT_MS):
+        if socket.error() != QLocalSocket.LocalSocketError.ServerNotFoundError:
+            # Nobody listening is normal (first launch). Anything else is worth a log line.
+            log.warning("cannot reach the running Aperture: %s", socket.errorString())
         return False
     if sys.platform == "win32":
         # Let the running window come to the front: Windows only allows that to a process
@@ -106,13 +113,20 @@ def forward(name: str, args: Sequence[str]) -> bool:
 
         ctypes.windll.user32.AllowSetForegroundWindow(-1)  # ASFW_ANY
     socket.write(encode_message(args))
-    while socket.bytesToWrite() and socket.waitForBytesWritten(CONNECT_TIMEOUT_MS):
-        pass
-    sent = socket.bytesToWrite() == 0
+    # Wait in short steps. On Windows a write that finished between two checks is only
+    # counted once flush() collects it; waitForBytesWritten alone would report it as lost.
+    deadline = time.monotonic() + HANDOFF_TIMEOUT_S
+    while socket.bytesToWrite() and time.monotonic() < deadline:
+        if not socket.waitForBytesWritten(50):
+            socket.flush()
+    if socket.bytesToWrite():
+        log.warning("the running Aperture did not take the files; opening them here")
+        socket.abort()
+        return False
     socket.disconnectFromServer()
     if socket.state() != QLocalSocket.LocalSocketState.UnconnectedState:
         socket.waitForDisconnected(CONNECT_TIMEOUT_MS)
-    return sent
+    return True
 
 
 def claim(data_dir: Path, args: Sequence[str]) -> tuple[bool, InstanceServer | None]:

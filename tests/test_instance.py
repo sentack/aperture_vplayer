@@ -1,6 +1,9 @@
 """The single-instance handoff: a second launch passes its files to the first, over Qt."""
 
+import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -20,11 +23,52 @@ def app():
     return QtGui.QGuiApplication.instance() or QtGui.QGuiApplication([])
 
 
+SRC = Path(__file__).resolve().parent.parent / "src"
+
+# A later launch, in its own process as in real use. It has to be: Windows pipes deliver
+# only while the receiving instance reads, so one thread cannot both send and receive.
+LAUNCH = """
+import json, sys
+from pathlib import Path
+from PySide6.QtCore import QCoreApplication
+from aperture.instance import claim
+app = QCoreApplication([])
+forwarded, server = claim(Path(sys.argv[1]), json.loads(sys.argv[2]))
+print(json.dumps(forwarded))
+"""
+
+
+def launch(data_dir, args):
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(SRC), os.environ.get("PYTHONPATH", "")]))
+    command = [sys.executable, "-c", LAUNCH, str(data_dir), json.dumps(args)]
+    return subprocess.Popen(command, stdout=subprocess.PIPE, text=True, env=env)
+
+
+def handed_over(app, process):
+    """Run this instance's event loop until the launch exits; True if it handed over."""
+    assert spin(app, lambda: process.poll() is not None, seconds=30)
+    return json.loads(process.stdout.read()) is True
+
+
 def spin(app, until, seconds=5.0):
-    timer = QtCore.QElapsedTimer()
-    timer.start()
-    while not until() and timer.elapsed() < seconds * 1000:
-        app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 50)
+    """Run the event loop until `until()` holds or `seconds` pass.
+
+    One QEventLoop.exec() with a polling timer, not a processEvents() loop: on Python 3.11,
+    PySide6 6.12 drops a reference to None on every processEvents() call, and a few
+    thousand of them abort the interpreter (none_dealloc).
+    """
+    if until():
+        return True
+    loop = QtCore.QEventLoop()
+    poll = QtCore.QTimer(interval=20)
+    poll.timeout.connect(lambda: until() and loop.quit())
+    deadline = QtCore.QTimer(singleShot=True, interval=int(seconds * 1000))
+    deadline.timeout.connect(loop.quit)
+    poll.start()
+    deadline.start()
+    loop.exec()
+    poll.stop()
+    deadline.stop()
     return until()
 
 
@@ -97,7 +141,7 @@ def test_a_second_launch_hands_its_files_to_the_first(app, tmp_path):
     server.received.connect(received.append)
     try:
         files = [str(tmp_path / "one.mp4"), str(tmp_path / "two.mp4")]
-        assert claim(tmp_path, files) == (True, None)
+        assert handed_over(app, launch(tmp_path, files))
         assert spin(app, lambda: received)
         assert received == [files]
     finally:
@@ -139,8 +183,11 @@ def test_switching_single_window_back_on_takes_over_only_a_free_role(app, tmp_pa
     finally:
         first.close()
     second = take_over(tmp_path)
+    received = []
     try:
         assert second is not None
-        assert claim(tmp_path, ["/v/a.mp4"]) == (True, None)  # later launches reach it
+        second.received.connect(received.append)
+        assert handed_over(app, launch(tmp_path, ["/v/a.mp4"]))  # later launches reach it
+        assert spin(app, lambda: received)
     finally:
         second.close()
