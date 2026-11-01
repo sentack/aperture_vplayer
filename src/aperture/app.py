@@ -91,6 +91,23 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
 
     follow_prefs()
     prefs.changed.connect(follow_prefs)
+
+    # Repeat and shuffle carry over to the next session.
+    player.repeatMode = settings.repeat
+    player.shuffle = settings.shuffle
+
+    def remember_play_mode() -> None:
+        settings.repeat = player.repeatMode
+        settings.shuffle = player.shuffle
+        settings.save()
+
+    player.playModeChanged.connect(remember_play_mode)
+
+    def reset_play_mode() -> None:
+        player.repeatMode = settings.repeat
+        player.shuffle = settings.shuffle
+
+    prefs.resetDone.connect(reset_play_mode)
     defaults = DefaultPlayerController(settings, ICON_PATH, app)
     defaults.noticed.connect(player.noticed)
     lyrics = LyricsController(player, app)

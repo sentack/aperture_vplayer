@@ -8,6 +8,10 @@ var pause = { fill: "M7.5 5h1a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5h-1A
 
 var previous = { stroke: "M6 5.5v13", fill: "M19 6.4v11.2c0 .8-.9 1.3-1.55.85l-8.1-5.6a1 1 0 0 1 0-1.7l8.1-5.6c.65-.45 1.55 0 1.55.85Z" }
 var next = { stroke: "M18 5.5v13", fill: "M5 6.4v11.2c0 .8.9 1.3 1.55.85l8.1-5.6a1 1 0 0 0 0-1.7l-8.1-5.6C5.9 5.1 5 5.55 5 6.4Z" }
+// Playlist modes: a loop of two arrows; with a small 1 for repeat-one; crossing arrows for shuffle.
+var repeat = { stroke: "M17 2.5l3.5 3.5-3.5 3.5M3.5 11v-1a4 4 0 0 1 4-4h13M7 21.5L3.5 18 7 14.5M20.5 13v1a4 4 0 0 1-4 4h-13" }
+var repeatOne = { stroke: "M17 2.5l3.5 3.5-3.5 3.5M3.5 11v-1a4 4 0 0 1 4-4h13M7 21.5L3.5 18 7 14.5M20.5 13v1a4 4 0 0 1-4 4h-13M11 10.6l1.3-.9v4.8" }
+var shuffle = { stroke: "M16 3.5h4.5V8M3.5 20L20.5 3.5M20.5 16v4.5H16M14.8 14.8l5.7 5.7M3.5 4l5.2 5.2" }
 var stop = { stroke: "M8 6.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 16V8A1.5 1.5 0 0 1 8 6.5Z" }
 var volume = { stroke: "M16.5 8.5a5 5 0 0 1 0 7M19 6a9 9 0 0 1 0 12", fill: "M4 9v6h4l5 4V5L8 9H4Z" }
 var muted = { stroke: "M16.5 9.5l5 5M21.5 9.5l-5 5", fill: "M4 9v6h4l5 4V5L8 9H4Z" }

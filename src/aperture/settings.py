@@ -10,6 +10,7 @@ from pathlib import Path
 
 from aperture.core import RATES
 from aperture.core.keymap import ACTION_IDS
+from aperture.core.playlist import REPEAT_MODES
 from aperture.core.storage import read_json, write_json
 from aperture.theme import ACCENTS, DEFAULT_ACCENT
 
@@ -36,6 +37,8 @@ DEFAULTS: dict[str, object] = {
     "hardware_decoding": True,
     # Files opened while Aperture runs go to the open window; off, each open is a new window.
     "single_window": True,
+    "repeat": "off",  # playlist repeat: off, all, one
+    "shuffle": False,
 }
 
 
@@ -69,8 +72,10 @@ def _valid(key: str, value: object) -> bool:
             return isinstance(value, dict) and all(
                 k in ACTION_IDS and isinstance(v, str) for k, v in value.items()
             )
-        case "hardware_decoding" | "single_window":
+        case "hardware_decoding" | "single_window" | "shuffle":
             return isinstance(value, bool)
+        case "repeat":
+            return value in REPEAT_MODES
     return False
 
 
@@ -103,6 +108,8 @@ class Settings:
     shortcuts = _field("shortcuts")
     hardware_decoding = _field("hardware_decoding")
     single_window = _field("single_window")
+    repeat = _field("repeat")
+    shuffle = _field("shuffle")
 
     @property
     def start_rate(self) -> float:

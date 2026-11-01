@@ -114,6 +114,25 @@ Rectangle {
                 enabled: player.hasMedia
                 onClicked: player.stop()
             }
+
+            // Playlist modes. Lit in the accent colour while on.
+            IconButton {
+                glyph: player.repeatMode === "one" ? Icons.repeatOne : Icons.repeat
+                label: player.repeatMode === "one" ? "Repeat one (click: repeat off)"
+                     : player.repeatMode === "all" ? "Repeat all (click: repeat one)"
+                     : "Repeat off (click: repeat all)"
+                iconColor: player.repeatMode !== "off" ? bar.accent : theme.text_secondary
+                iconHoverColor: player.repeatMode !== "off" ? bar.accent : theme.text_primary
+                onClicked: player.cycleRepeat()
+            }
+
+            IconButton {
+                glyph: Icons.shuffle
+                label: player.shuffle ? "Shuffle on (click: off)" : "Shuffle off (click: on)"
+                iconColor: player.shuffle ? bar.accent : theme.text_secondary
+                iconHoverColor: player.shuffle ? bar.accent : theme.text_primary
+                onClicked: player.toggleShuffle()
+            }
         }
 
         Clock {

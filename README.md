@@ -113,6 +113,8 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 | `H` | Subtitles later (+100 ms) |
 | `N` | Next in playlist |
 | `P` | Previous in playlist |
+| `R` | Repeat: off, all, one |
+| `Shift+S` | Shuffle on / off |
 | `F` | Fullscreen |
 | `Ctrl+P` | Picture-in-picture |
 | `S` | Screenshot |

@@ -32,6 +32,7 @@ from aperture.core.media import (
     parse_stream_url,
     screenshot_name,
 )
+from aperture.core.playlist import REPEAT_ALL, REPEAT_MODES, REPEAT_OFF, REPEAT_ONE
 from aperture.player.boost import AudioBoost, make_capture
 from aperture.player.tracks import TrackSelector, is_subtitle
 from aperture.player.urls import to_paths
@@ -85,6 +86,7 @@ class PlayerController(QObject):
     videoAspectChanged = Signal()
     hasVideoChanged = Signal()
     resumeOfferChanged = Signal()
+    playModeChanged = Signal()  # repeat or shuffle
 
     def __init__(self, history: History | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -325,6 +327,43 @@ class PlayerController(QObject):
     def nameFilters(self) -> list[str]:
         return dialog_filters()
 
+    # --- repeat and shuffle ------------------------------------------------
+
+    def _get_repeat(self) -> str:
+        return self._playlist.repeat
+
+    def _set_repeat(self, mode: str) -> None:
+        if mode in REPEAT_MODES and mode != self._playlist.repeat:
+            self._playlist.repeat = mode
+            self.playModeChanged.emit()
+            self.playlistChanged.emit()  # next / previous availability changes with it
+
+    repeatMode = Property(str, _get_repeat, _set_repeat, notify=playModeChanged)
+
+    def _get_shuffle(self) -> bool:
+        return self._playlist.shuffle
+
+    def _set_shuffle(self, on: bool) -> None:
+        if bool(on) != self._playlist.shuffle:
+            self._playlist.shuffle = bool(on)
+            self.playModeChanged.emit()
+            self.playlistChanged.emit()
+
+    shuffle = Property(bool, _get_shuffle, _set_shuffle, notify=playModeChanged)
+
+    @Slot()
+    def cycleRepeat(self) -> None:
+        """Off → All → One → Off."""
+        modes = REPEAT_MODES
+        self._set_repeat(modes[(modes.index(self._playlist.repeat) + 1) % len(modes)])
+        labels = {REPEAT_OFF: "Repeat off", REPEAT_ALL: "Repeat all", REPEAT_ONE: "Repeat one"}
+        self.noticed.emit(labels[self._playlist.repeat])
+
+    @Slot()
+    def toggleShuffle(self) -> None:
+        self._set_shuffle(not self._playlist.shuffle)
+        self.noticed.emit("Shuffle on" if self._playlist.shuffle else "Shuffle off")
+
     # --- commands ----------------------------------------------------------
 
     @Slot(QObject)
@@ -342,7 +381,7 @@ class PlayerController(QObject):
         self._checkpoint()
         self._playlist.clear()
         self._playlist.add(files)
-        self._load(0)
+        self._load(self._playlist.next_index())  # the first file, or a random one shuffled
 
     def add_paths(self, paths: Iterable[Path | str]) -> None:
         """Append to the playlist; start playing only if nothing is loaded."""
@@ -449,15 +488,15 @@ class PlayerController(QObject):
 
     @Slot()
     def playNext(self) -> None:
-        if self._playlist.has_next:
-            self._load(self._playlist.index + 1)
+        self._go(self._playlist.advance())
 
     @Slot()
     def playPrevious(self) -> None:
-        if self._player.position() > RESTART_THRESHOLD_MS or not self._playlist.has_previous:
+        previous = self._playlist.previous_index()
+        if self._player.position() > RESTART_THRESHOLD_MS or previous is None:
             self.seek(0)
         else:
-            self._load(self._playlist.index - 1)
+            self._go(previous)
 
     @Slot()
     def toggleMute(self) -> None:
@@ -650,6 +689,17 @@ class PlayerController(QObject):
         self.playlistChanged.emit()
         self.recentChanged.emit()
 
+    def _go(self, index: int | None) -> None:
+        """Play item `index` (None: nothing to play). The playing item starts over instead
+        of reloading, as repeat-one and one-item repeat-all need."""
+        if index is None:
+            return
+        if index == self._playlist.index and self._loaded is not None:
+            self._player.setPosition(0)
+            self._player.play()
+        else:
+            self._load(index)
+
     def _unload(self) -> None:
         self._checkpoint()
         self._loaded = None
@@ -753,8 +803,7 @@ class PlayerController(QObject):
                 self._history.forget_position(self._loaded)
                 self._history.save()
                 self.recentChanged.emit()
-            if self._playlist.has_next:
-                self._load(self._playlist.index + 1)
+            self._go(self._playlist.advance(finished=True))
 
     def _on_error(self, error: QMediaPlayer.Error, detail: str) -> None:
         if error == QMediaPlayer.Error.NoError:
