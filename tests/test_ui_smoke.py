@@ -259,3 +259,109 @@ def test_menus_with_chapters_and_boost_open_cleanly(ui, app):
     menu.close()
     app.processEvents()
     assert messages(warnings) == []
+
+
+def _visual_items(item):
+    yield item
+    for child in item.childItems():
+        yield from _visual_items(child)
+
+
+def _volume_key_works(app, window, player):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    player.volume = 0.5
+    QTest.keyClick(window, Qt.Key.Key_Down)
+    app.processEvents()
+    return player.volume < 0.5
+
+
+def test_shortcuts_survive_rebinding_with_a_key_press(ui, app):
+    # Rebinding rebuilt the rows mid-keypress, leaving the capture on: every shortcut stayed
+    # dead until restart. Drive it like a user: listen on a row, press a key, close Settings.
+    from PySide6.QtCore import QMetaObject, QObject, Qt
+    from PySide6.QtTest import QTest
+
+    engine, player, warnings = ui
+    keymap = engine.rootContext().contextProperty("keymap")
+    window = engine.rootObjects()[0]
+    window.show()
+    window.requestActivate()
+    assert QTest.qWaitForWindowActive(window, 3000)
+    window.setProperty("settingsOpen", True)
+    window.findChild(QObject, "settingsDialog").setProperty("page", 4)
+    app.processEvents()
+
+    def row(action_id):
+        for item in _visual_items(window.contentItem()):
+            data = item.property("modelData")
+            data = data.toVariant() if hasattr(data, "toVariant") else data
+            if item.property("listening") is not None and isinstance(data, dict):
+                if data.get("id") == action_id:
+                    return item
+        raise LookupError(action_id)
+
+    QMetaObject.invokeMethod(row("mute"), "startListening")
+    QTest.keyClick(window, Qt.Key.Key_K)
+    app.processEvents()
+    assert keymap.keys.value("mute") == "K"
+    assert not keymap.property("capturing")
+
+    QMetaObject.invokeMethod(row("mute"), "startListening")  # then Reset, still listening
+    keymap.resetShortcuts()
+    app.processEvents()
+    window.setProperty("settingsOpen", False)
+    app.processEvents()
+    assert not keymap.property("capturing")
+    assert _volume_key_works(app, window, player)
+    assert messages(warnings) == []
+
+
+def test_wheel_on_the_playlist_never_scrolls_what_is_underneath(ui, app):
+    # The lyrics list sits under the playlist sheet; turns the sheet can't use leaked to it.
+    from PySide6.QtCore import QPoint, QPointF, Qt, QUrl
+    from PySide6.QtGui import QWheelEvent
+    from PySide6.QtQml import QQmlComponent
+
+    from aperture.app import QML_DIR
+
+    engine, _, warnings = ui
+    component = QQmlComponent(engine)
+    component.setData(
+        b"""
+        import QtQuick
+        Window {
+            width: 800; height: 600; visible: true
+            ListView {
+                objectName: "under"
+                anchors.fill: parent
+                model: 200
+                delegate: Text { text: index; height: 40 }
+            }
+            PlaylistPanel { x: 400; y: 50; width: 340; height: 400 }
+        }
+        """,
+        QUrl.fromLocalFile(str(QML_DIR / "WheelProbe.qml")),
+    )
+    scene = component.create()
+    assert scene is not None, component.errorString()
+    app.processEvents()
+    under = next(i for i in _visual_items(scene.contentItem()) if i.objectName() == "under")
+    from PySide6.QtTest import QTest
+
+    def turn(x):
+        at = QPointF(x, 250)
+        event = QWheelEvent(
+            at, scene.mapToGlobal(at), QPoint(), QPoint(0, -360), Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.NoScrollPhase, False,
+        )  # fmt: skip
+        app.sendEvent(scene, event)
+        QTest.qWait(300)  # Flickable animates wheel scrolling
+        return under.property("contentY")
+
+    assert turn(570) == 0  # on the sheet
+    assert turn(100) > 0  # beside it: the probe really scrolls, so the check above means something
+    scene.close()
+    scene.deleteLater()
+    assert messages(warnings) == []
