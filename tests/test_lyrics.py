@@ -104,7 +104,41 @@ def test_embed_and_read_mp3(tmp_path):
     assert read_embedded(path) is None
     embed(path, "[00:01.00]hello")
     embed(path, "[00:01.00]again")
-    assert read_embedded(path) == "[00:01.00]again"
+    assert read_embedded(path).strip() == "[00:01.00]again"
+
+
+def test_synced_mp3_lyrics_use_sylt_with_plain_words_in_uslt(tmp_path):
+    from mutagen.id3 import ID3
+
+    from aperture.core.lyrics_tags import embed, read_embedded
+
+    path = tmp_path / "a.mp3"
+    path.write_bytes(bytes(512))
+    embed(path, "[00:01.50]first line\n[01:02.25]second line")
+    tags = ID3(path)
+    (sylt,) = tags.getall("SYLT")
+    assert sylt.format == 2 and sylt.text == [("first line", 1500), ("second line", 62250)]
+    assert str(tags.getall("USLT")[0].text) == "first line\nsecond line"
+    assert parse_lyrics(read_embedded(path)) == [
+        LyricLine(1500, "first line"),
+        LyricLine(62250, "second line"),
+    ]
+    embed(path, "now unsynced")  # replacing synced lyrics drops the old timing
+    assert ID3(path).getall("SYLT") == []
+    assert read_embedded(path) == "now unsynced"
+
+
+def test_reads_lrc_text_stored_in_uslt_by_earlier_versions(tmp_path):
+    from mutagen.id3 import ID3, USLT
+
+    from aperture.core.lyrics_tags import read_embedded
+
+    path = tmp_path / "old.mp3"
+    path.write_bytes(bytes(512))
+    tags = ID3()
+    tags.add(USLT(encoding=3, lang="eng", desc="", text="[00:02.00]old style"))
+    tags.save(path)
+    assert parse_lyrics(read_embedded(path)) == [LyricLine(2000, "old style")]
 
 
 def test_embed_and_read_flac(tmp_path):
