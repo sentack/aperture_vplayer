@@ -128,3 +128,19 @@ def test_a_crashed_instances_socket_file_is_taken_over(app, tmp_path):
         assert not forwarded and server is not None
     finally:
         server.close()
+
+
+def test_switching_single_window_back_on_takes_over_only_a_free_role(app, tmp_path):
+    from aperture.instance import claim, take_over
+
+    _, first = claim(tmp_path, [])
+    try:
+        assert take_over(tmp_path) is None  # another window holds the role: stay separate
+    finally:
+        first.close()
+    second = take_over(tmp_path)
+    try:
+        assert second is not None
+        assert claim(tmp_path, ["/v/a.mp4"]) == (True, None)  # later launches reach it
+    finally:
+        second.close()

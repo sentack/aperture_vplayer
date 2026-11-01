@@ -123,25 +123,44 @@ def claim(data_dir: Path, args: Sequence[str]) -> tuple[bool, InstanceServer | N
     (the launch then runs on its own rather than not at all).
     """
     name = server_name(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
-    lock = QLockFile(str(data_dir / LOCK_FILE))
-    # Never "stale" by age: the instance may run for days. A lock left by a process that
-    # died is still taken over, because QLockFile checks whether its owner is alive.
-    lock.setStaleLockTime(0)
+    lock = _lock(data_dir)
     deadline = time.monotonic() + CLAIM_TIMEOUT_S
     while time.monotonic() < deadline:
         if forward(name, args):
             return True, None
         if lock.tryLock(100):
-            server = InstanceServer(name, lock)
-            if server.listen():
-                return False, server
-            lock.unlock()
-            return False, None
+            return False, _serve(name, lock)
         # Someone holds the lock but is not listening yet: it is starting. Try again.
         time.sleep(0.1)
     log.warning("another Aperture holds %s but does not answer; running separately", LOCK_FILE)
     return False, None
+
+
+def take_over(data_dir: Path) -> InstanceServer | None:
+    """Become the running instance if none is, without handing anything over.
+
+    For switching the single window back on while Aperture runs: when another window
+    already took the role meanwhile, this one stays separate (None).
+    """
+    lock = _lock(data_dir)
+    return _serve(server_name(data_dir), lock) if lock.tryLock(0) else None
+
+
+def _lock(data_dir: Path) -> QLockFile:
+    data_dir.mkdir(parents=True, exist_ok=True)
+    lock = QLockFile(str(data_dir / LOCK_FILE))
+    # Never "stale" by age: the instance may run for days. A lock left by a process that
+    # died is still taken over, because QLockFile checks whether its owner is alive.
+    lock.setStaleLockTime(0)
+    return lock
+
+
+def _serve(name: str, lock: QLockFile) -> InstanceServer | None:
+    server = InstanceServer(name, lock)
+    if server.listen():
+        return server
+    lock.unlock()
+    return None
 
 
 class LaunchRouter(QObject):

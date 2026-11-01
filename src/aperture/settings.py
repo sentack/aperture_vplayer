@@ -34,6 +34,8 @@ DEFAULTS: dict[str, object] = {
     "ask_default_last": 0.0,  # Unix time of the last "make Aperture default?" prompt
     "shortcuts": {},  # action id -> key, only where it differs from the default ("" = unbound)
     "hardware_decoding": True,
+    # Files opened while Aperture runs go to the open window; off, each open is a new window.
+    "single_window": True,
 }
 
 
@@ -67,7 +69,7 @@ def _valid(key: str, value: object) -> bool:
             return isinstance(value, dict) and all(
                 k in ACTION_IDS and isinstance(v, str) for k, v in value.items()
             )
-        case "hardware_decoding":
+        case "hardware_decoding" | "single_window":
             return isinstance(value, bool)
     return False
 
@@ -100,6 +102,7 @@ class Settings:
     ask_default_last = _field("ask_default_last")
     shortcuts = _field("shortcuts")
     hardware_decoding = _field("hardware_decoding")
+    single_window = _field("single_window")
 
     @property
     def start_rate(self) -> float:

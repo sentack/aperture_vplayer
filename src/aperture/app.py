@@ -151,15 +151,17 @@ def run(argv: list[str] | None = None) -> int:
     qInstallMessageHandler(_qt_message)
 
     from aperture.core.launch import absolute_args
-    from aperture.instance import LaunchRouter, claim
+    from aperture.instance import LaunchRouter, claim, take_over
 
-    # One window per user: if Aperture is already running, it takes these files and this
-    # launch ends here. A multi-file "Open" that starts one process per file becomes one
-    # playlist this way.
+    # Single window (the default): if Aperture is already running, it takes these files and
+    # this launch ends here. A multi-file "Open" that starts one process per file becomes
+    # one playlist this way. With the setting off, every launch is its own window.
     launch_args = absolute_args(app.arguments()[1:], os.getcwd())
-    forwarded, instance = claim(data_dir, launch_args)
-    if forwarded:
-        return 0
+    instance = None
+    if settings.single_window:
+        forwarded, instance = claim(data_dir, launch_args)
+        if forwarded:
+            return 0
 
     from aperture.update.controller import apply_pending, mark_launched
     from aperture.update.install import detect
@@ -202,8 +204,25 @@ def run(argv: list[str] | None = None) -> int:
         window.requestActivate()
 
     router = LaunchRouter(open_files, player.add_paths, bring_to_front, parent=app)
+
+    def receive(args: list[str]) -> None:
+        router.submit(args, from_elsewhere=True)
+
     if instance is not None:
-        instance.received.connect(lambda args: router.submit(args, from_elsewhere=True))
+        instance.received.connect(receive)
+
+    def follow_single_window() -> None:
+        """The setting applies at once: stop or start taking other launches' files."""
+        nonlocal instance
+        if settings.single_window and instance is None:
+            instance = take_over(data_dir)
+            if instance is not None:
+                instance.received.connect(receive)
+        elif not settings.single_window and instance is not None:
+            instance.close()
+            instance = None
+
+    engine.rootContext().contextProperty("prefs").changed.connect(follow_single_window)
 
     # macOS hands Finder "Open With" and Dock drops to the app as FileOpen events, not argv:
     # one event per file, which the router gathers into one playlist like separate launches.

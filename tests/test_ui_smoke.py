@@ -365,3 +365,18 @@ def test_wheel_on_the_playlist_never_scrolls_what_is_underneath(ui, app):
     scene.close()
     scene.deleteLater()
     assert messages(warnings) == []
+
+
+def test_single_window_setting_toggles_from_settings(ui, app):
+    engine, _, warnings = ui
+    prefs = engine.rootContext().contextProperty("prefs")
+    window = engine.rootObjects()[0]
+    window.setProperty("settingsOpen", True)
+    app.processEvents()
+    assert prefs.property("singleWindow") is True
+    prefs.setProperty("singleWindow", False)
+    app.processEvents()
+    assert prefs.property("singleWindow") is False
+    prefs.setProperty("singleWindow", True)
+    app.processEvents()
+    assert messages(warnings) == []

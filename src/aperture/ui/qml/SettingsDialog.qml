@@ -248,6 +248,26 @@ Modal {
                 }
 
                 Section {
+                    title: "Windows"
+
+                    Row2 {
+                        text: "Open files in the same window"
+
+                        ToggleSwitch {
+                            label: "Open files in the same window"
+                            checked: prefs.singleWindow
+                            onToggled: checked => prefs.singleWindow = checked
+                        }
+                    }
+
+                    Note {
+                        text: prefs.singleWindow
+                              ? "Files you open while Aperture runs play here, and several selected files open as one playlist."
+                              : "Every file you open from your file manager starts its own Aperture window."
+                    }
+                }
+
+                Section {
                     title: "Reset"
 
                     Note { text: "Put every setting back the way Aperture shipped. Your history and playlist stay." }
