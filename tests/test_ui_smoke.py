@@ -380,3 +380,19 @@ def test_single_window_setting_toggles_from_settings(ui, app):
     prefs.setProperty("singleWindow", True)
     app.processEvents()
     assert messages(warnings) == []
+
+
+def test_repeat_and_shuffle_cycle_and_are_remembered(ui, app, tmp_path):
+    from aperture.settings import Settings
+
+    _, player, warnings = ui
+    player.cycleRepeat()
+    player.cycleRepeat()
+    player.toggleShuffle()
+    app.processEvents()
+    assert player.property("repeatMode") == "one" and player.property("shuffle") is True
+    saved = Settings(tmp_path / "settings.json")  # the ui fixture keeps its data in tmp_path
+    assert saved.repeat == "one" and saved.shuffle is True
+    player.cycleRepeat()
+    assert player.property("repeatMode") == "off"
+    assert messages(warnings) == []

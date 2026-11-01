@@ -191,3 +191,18 @@ def test_single_window_is_on_by_default_and_persists(tmp_path):
         settings.single_window = "no"
     settings.reset()
     assert settings.single_window is True
+
+
+def test_play_mode_settings(tmp_path):
+    path = tmp_path / "settings.json"
+    settings = Settings(path)
+    assert (settings.repeat, settings.shuffle) == ("off", False)
+    settings.repeat = "one"
+    settings.shuffle = True
+    settings.save()
+    loaded = Settings(path)
+    assert (loaded.repeat, loaded.shuffle) == ("one", True)
+    with pytest.raises(ValueError):
+        loaded.repeat = "twice"
+    loaded.reset()
+    assert loaded.repeat == "off" and loaded.shuffle is False
