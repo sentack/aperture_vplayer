@@ -1,7 +1,8 @@
 """Lyrics for the playing audio file, exposed to QML as `lyrics`.
 
-Sources, in order: a sidecar `<stem>.lrc` / `<stem>.txt`, then lyrics embedded in the file's
-tags. The editor saves an LRC sidecar and can also embed the same text into the file.
+Sources, in order: lyrics embedded in the file's tags, then a sidecar `<stem>.lrc` / `.txt`.
+Lyrics written in the editor or found online are embedded into the file itself; only formats
+that cannot hold lyrics (WAV, AAC, …) get a `<stem>.lrc` next to them instead.
 """
 
 from __future__ import annotations
@@ -97,11 +98,9 @@ class LyricsController(QObject):
                 return
         self.noticed.emit("No lyrics found in that file")
 
-    @Slot(list, bool)
-    def save(self, rows: list, embed: bool) -> None:
-        """Write `rows` ({time: ms or -1, text}) as `<stem>.lrc`, and into the file if `embed`."""
-        if self._audio is None:
-            return
+    @Slot(list)
+    def save(self, rows: list) -> None:
+        """Store `rows` ({time: ms or -1, text}) as the lyrics of the playing file."""
         lines = [
             LyricLine(None if int(row.get("time", -1)) < 0 else int(row["time"]), str(row["text"]))
             for row in rows
@@ -110,26 +109,40 @@ class LyricsController(QObject):
         if not lines:
             self.noticed.emit("Nothing to save")
             return
+        self.store(lines)
+
+    def store(self, lines: list[LyricLine], origin: str = "") -> bool:
+        """Embed `lines` in the playing file (a .lrc beside it if it can't hold lyrics).
+
+        `origin` names where they came from, for the message ("from LRCLIB").
+        """
+        if self._audio is None or not lines:
+            return False
+        from aperture.core.lyrics_tags import EMBEDDABLE, LyricsTagError
+        from aperture.core.lyrics_tags import embed as embed_lyrics
+
         text = format_lrc(lines)
+        suffix = f" {origin}" if origin else ""
+        if self._audio.suffix.lower() in EMBEDDABLE:
+            try:
+                embed_lyrics(self._audio, text)
+            except LyricsTagError as exc:
+                log.warning("embedding lyrics failed: %s", exc)
+                self.noticed.emit(f"Couldn't save lyrics into {self._audio.name}: {exc}")
+                return False
+            self._set_track(lines, "Embedded")
+            self.noticed.emit(f"Lyrics{suffix} saved into {self._audio.name}")
+            return True
         sidecar = self._audio.with_suffix(".lrc")
         try:
             sidecar.write_text(text, encoding="utf-8")
         except OSError as exc:
             log.warning("cannot write %s", sidecar, exc_info=True)
             self.noticed.emit(f"Couldn't save lyrics: {exc.strerror or exc}")
-            return
-        message = f"Saved {sidecar.name}"
-        if embed:
-            from aperture.core.lyrics_tags import LyricsTagError, embed as embed_lyrics
-
-            try:
-                embed_lyrics(self._audio, text)
-                message += " and embedded it"
-            except LyricsTagError as exc:
-                log.warning("embedding lyrics failed: %s", exc)
-                message += f" — couldn't embed: {exc}"
+            return False
         self._set_track(lines, sidecar.name)
-        self.noticed.emit(message)
+        self.noticed.emit(f"Lyrics{suffix} saved as {sidecar.name}: this format can't hold them")
+        return True
 
     # --- internals ---------------------------------------------------------
 
@@ -139,14 +152,16 @@ class LyricsController(QObject):
         self._set_track([], "")
         if self._audio is None:
             return
-        sidecar = find_lyrics(self._audio)
-        if sidecar is not None and self._load_file(sidecar):
-            return
         from aperture.core.lyrics_tags import read_embedded
 
+        # The file's own tags win: that is where saved and downloaded lyrics go.
         embedded = read_embedded(self._audio)
-        if embedded:
-            self._set_track(parse_lyrics(embedded), "Embedded")
+        if embedded and (lines := parse_lyrics(embedded)):
+            self._set_track(lines, "Embedded")
+            return
+        sidecar = find_lyrics(self._audio)
+        if sidecar is not None:
+            self._load_file(sidecar)
 
     def _load_file(self, path: Path) -> bool:
         try:
