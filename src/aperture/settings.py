@@ -39,6 +39,7 @@ DEFAULTS: dict[str, object] = {
     "single_window": True,
     "repeat": "off",  # playlist repeat: off, all, one
     "shuffle": False,
+    "opensubtitles_key": "",  # the user's own API key, needed for subtitle search
 }
 
 
@@ -76,6 +77,8 @@ def _valid(key: str, value: object) -> bool:
             return isinstance(value, bool)
         case "repeat":
             return value in REPEAT_MODES
+        case "opensubtitles_key":
+            return isinstance(value, str) and len(value) <= 200
     return False
 
 
@@ -110,6 +113,7 @@ class Settings:
     single_window = _field("single_window")
     repeat = _field("repeat")
     shuffle = _field("shuffle")
+    opensubtitles_key = _field("opensubtitles_key")
 
     @property
     def start_rate(self) -> float:
@@ -122,9 +126,10 @@ class Settings:
         return SUBTITLE_SIZES[self._values["subtitle_size"]]
 
     def reset(self) -> None:
-        # Bookkeeping, not a customization: keep when the default-player question was last asked.
-        last = self._values["ask_default_last"]
-        self._values = dict(DEFAULTS, ask_default_last=last)
+        # Kept: when the default-player question was last asked (bookkeeping), and the
+        # OpenSubtitles key (an account credential the user would have to look up again).
+        keep = {key: self._values[key] for key in ("ask_default_last", "opensubtitles_key")}
+        self._values = dict(DEFAULTS, **keep)
 
     def save(self) -> None:
         if self._path is not None:

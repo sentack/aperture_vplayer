@@ -133,6 +133,17 @@ class PreferencesController(QObject):
 
     singleWindow = Property(bool, _get_single_window, _set_single_window, notify=changed)
 
+    def _get_subtitle_key(self) -> str:
+        return self._settings.opensubtitles_key
+
+    def _set_subtitle_key(self, value: str) -> None:
+        value = str(value).strip()
+        if value != self._settings.opensubtitles_key and len(value) <= 200:
+            self._settings.opensubtitles_key = value
+            self._commit()
+
+    openSubtitlesKey = Property(str, _get_subtitle_key, _set_subtitle_key, notify=changed)
+
     @Property(bool, notify=changed)
     def restartNeeded(self) -> bool:
         return self._settings.hardware_decoding != self._running_hardware

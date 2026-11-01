@@ -15,6 +15,7 @@ T.Menu {
     signal subtitleFileRequested()
     signal fullscreenRequested()
     signal settingsRequested()
+    signal searchOnlineRequested(string kind)
 
     component Item_: T.MenuItem {
         id: item
@@ -235,6 +236,21 @@ T.Menu {
             enabled: player.hasMedia
             onTriggered: options.subtitleFileRequested()
         }
+    }
+
+    // One of the two, for the kind of file playing; neither for streams.
+    Item_ {
+        text: "Search for subtitles online…"
+        visible: online.canSearchSubtitles
+        height: visible ? implicitHeight : 0
+        onTriggered: options.searchOnlineRequested("subtitles")
+    }
+
+    Item_ {
+        text: "Search for lyrics online…"
+        visible: online.canSearchLyrics
+        height: visible ? implicitHeight : 0
+        onTriggered: options.searchOnlineRequested("lyrics")
     }
 
     Separator_ {}

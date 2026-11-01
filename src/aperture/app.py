@@ -63,6 +63,7 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     from aperture.keys import KeymapController
     from aperture.player import PlayerController
     from aperture.player.lyrics import LyricsController
+    from aperture.player.online import OnlineSearch
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
     from aperture.preferences import PreferencesController
     from aperture.settings import Settings
@@ -131,6 +132,9 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     context.setContextProperty("appearance", appearance)
     context.setContextProperty("prefs", prefs)
     context.setContextProperty("keymap", keymap)
+    online = OnlineSearch(player, lyrics, player.tracks, settings, data_dir, app)
+    online.noticed.connect(player.noticed)
+    context.setContextProperty("online", online)
     updates = UpdateController(data_dir, detect(), load_build_info(), app.quit, app)
     updates.noticed.connect(player.noticed)
     context.setContextProperty("updates", updates)
