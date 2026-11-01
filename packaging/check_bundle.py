@@ -22,6 +22,8 @@ REQUIRED = (
     ("libavutil", r"(^|/)(lib)?avutil[^/]*\.(dll|dylib|so[.\d]*)$"),
     ("libswresample (audio)", r"(^|/)(lib)?swresample[^/]*\.(dll|dylib|so[.\d]*)$"),
     ("libswscale (pixel formats)", r"(^|/)(lib)?swscale[^/]*\.(dll|dylib|so[.\d]*)$"),
+    # The single-instance handoff (a second launch passing its files on) uses QLocalSocket.
+    ("QtNetwork (single instance)", r"(^|/)(libQt6Network\.so[.\d]*|Qt6Network\.dll|QtNetwork)$"),
     ("QtMultimedia QML module", r"(^|/)qml/QtMultimedia/qmldir$"),
     ("QtQuick.Controls QML module", r"(^|/)qml/QtQuick/Controls/qmldir$"),
     ("QtQuick.Dialogs QML module", r"(^|/)qml/QtQuick/Dialogs/qmldir$"),

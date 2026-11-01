@@ -128,7 +128,7 @@ def run(argv: list[str] | None = None) -> int:
         QObject,
         QProcess,
         QStandardPaths,
-        QTimer,
+        Qt,
         qInstallMessageHandler,
     )
     from PySide6.QtGui import QGuiApplication, QIcon
@@ -150,6 +150,19 @@ def run(argv: list[str] | None = None) -> int:
     setup_logging(data_dir)
     qInstallMessageHandler(_qt_message)
 
+    from aperture.core.launch import absolute_args
+    from aperture.instance import LaunchRouter, claim, take_over
+
+    # Single window (the default): if Aperture is already running, it takes these files and
+    # this launch ends here. A multi-file "Open" that starts one process per file becomes
+    # one playlist this way. With the setting off, every launch is its own window.
+    launch_args = absolute_args(app.arguments()[1:], os.getcwd())
+    instance = None
+    if settings.single_window:
+        forwarded, instance = claim(data_dir, launch_args)
+        if forwarded:
+            return 0
+
     from aperture.update.controller import apply_pending, mark_launched
     from aperture.update.install import detect
 
@@ -161,6 +174,8 @@ def run(argv: list[str] | None = None) -> int:
 
     def restart() -> None:
         player.shutdown()
+        if instance is not None:
+            instance.close()  # or the new process would hand itself to this one and quit
         program, arguments = restart_command()
         if QProcess.startDetached(program, arguments):
             app.quit()
@@ -173,30 +188,55 @@ def run(argv: list[str] | None = None) -> int:
         return 1
     mark_launched(data_dir)  # an updater waiting on this version can keep it now
 
-    # macOS hands Finder "Open With" and Dock drops to the app as FileOpen events, not argv.
-    # A multi-file open arrives as one event per file; batch them into a single queue.
-    pending: list[str] = []
-    flush = QTimer(app, singleShot=True, interval=150)
-    flush.timeout.connect(lambda: (player.open_paths(pending.copy()), pending.clear()))
+    from aperture.core.media import is_url
 
+    window = engine.rootObjects()[0]
+
+    def open_files(files: list[str]) -> None:
+        if len(files) == 1 and is_url(files[0]):
+            player.openUrl(files[0])
+        else:
+            player.open_paths(files)
+
+    def bring_to_front() -> None:
+        window.setWindowStates(window.windowStates() & ~Qt.WindowState.WindowMinimized)
+        window.raise_()
+        window.requestActivate()
+
+    router = LaunchRouter(open_files, player.add_paths, bring_to_front, parent=app)
+
+    def receive(args: list[str]) -> None:
+        router.submit(args, from_elsewhere=True)
+
+    if instance is not None:
+        instance.received.connect(receive)
+
+    def follow_single_window() -> None:
+        """The setting applies at once: stop or start taking other launches' files."""
+        nonlocal instance
+        if settings.single_window and instance is None:
+            instance = take_over(data_dir)
+            if instance is not None:
+                instance.received.connect(receive)
+        elif not settings.single_window and instance is not None:
+            instance.close()
+            instance = None
+
+    engine.rootContext().contextProperty("prefs").changed.connect(follow_single_window)
+
+    # macOS hands Finder "Open With" and Dock drops to the app as FileOpen events, not argv:
+    # one event per file, which the router gathers into one playlist like separate launches.
     class FileOpenFilter(QObject):
         def eventFilter(self, obj, event) -> bool:
             if event.type() == QEvent.Type.FileOpen:
-                pending.append(event.file())
-                flush.start()
+                router.submit([event.file()])
                 return True
             return False
 
     file_opener = FileOpenFilter(app)
     app.installEventFilter(file_opener)
 
-    from aperture.core.media import is_url
-
-    arguments = app.arguments()[1:]
-    if len(arguments) == 1 and is_url(arguments[0]):
-        player.openUrl(arguments[0])
-    else:
-        player.open_paths(arguments)
+    router.submit(launch_args)
     code = app.exec()
     # Tear QML down while `player` is still alive so bindings never see it vanish.
     del engine

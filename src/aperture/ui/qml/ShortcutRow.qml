@@ -25,6 +25,9 @@ Column {
         keymap.capturing = false
     }
 
+    // Rows are rebuilt when any shortcut changes (Reset, ×): never leave a capture behind.
+    Component.onDestruction: if (listening) keymap.capturing = false
+
     Item {
         width: parent.width
         height: 30
@@ -87,8 +90,13 @@ Column {
                     const sequence = keymap.sequenceFor(event.key, event.modifiers)
                     if (sequence === "")
                         return  // a lone modifier: keep listening for the rest of the combo
-                    row.error = keymap.bind(row.modelData.id, sequence)
+                    const action = row.modelData.id
                     row.stopListening()
+                    // An accepted key rebuilds every row, this one included: touch `row` only
+                    // when the key was refused and nothing changed.
+                    const error = keymap.bind(action, sequence)
+                    if (error !== "")
+                        row.error = error
                 }
                 onActiveFocusChanged: if (!activeFocus && row.listening) row.stopListening()
             }

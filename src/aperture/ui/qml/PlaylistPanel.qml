@@ -13,8 +13,8 @@ Rectangle {
     border.width: 1
     border.color: theme.bar_border
 
-    // Swallow presses on the glass so they never reach the video's tap handler.
-    MouseArea { anchors.fill: parent }
+    // Presses and wheel turns on the glass stay here (not the video, not the lyrics below).
+    InputShield {}
 
     Item {
         id: header

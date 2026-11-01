@@ -12,7 +12,9 @@ Window {
     onClosing: player.shutdown()
 
     readonly property bool fullscreen: visibility === Window.FullScreen
-    readonly property color scrimTop: theme.scrim_top
+    // Over a video the title bar's content is white (see TopBar.overVideo), so the fade behind
+    // it is dark in either theme.
+    readonly property color scrimTop: player.hasMedia ? Qt.rgba(0, 0, 0, 0.45) : theme.scrim_top
     readonly property color scrimBottom: theme.scrim_bottom
 
     // Chrome fades out after a still pointer during playback; any movement brings it back.
@@ -419,6 +421,7 @@ Window {
             id: topBar
             anchors { left: parent.left; right: parent.right; top: parent.top }
             fullscreen: root.fullscreen
+            overVideo: player.hasMedia
             visible: !root.mini
             opacity: root.chromeOpacity
             enabled: root.chromeVisible

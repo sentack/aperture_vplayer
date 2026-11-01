@@ -178,3 +178,16 @@ def test_settings_shortcuts_and_hardware(tmp_path):
     assert loaded.shortcuts == {"mute": "Ctrl+M2"} and loaded.hardware_decoding is False
     with pytest.raises(ValueError):
         settings.shortcuts = {"unknown_action": "X"}
+
+
+def test_single_window_is_on_by_default_and_persists(tmp_path):
+    path = tmp_path / "settings.json"
+    settings = Settings(path)
+    assert settings.single_window is True
+    settings.single_window = False
+    settings.save()
+    assert Settings(path).single_window is False
+    with pytest.raises(ValueError):
+        settings.single_window = "no"
+    settings.reset()
+    assert settings.single_window is True

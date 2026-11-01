@@ -26,6 +26,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: modal.closeRequested()
+            onWheel: wheel => wheel.accepted = true  // nothing behind a modal scrolls
         }
     }
 
@@ -42,7 +43,7 @@ Item {
 
         Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
-        // Keep clicks inside the card from closing the modal.
-        MouseArea { anchors.fill: parent }
+        // Keep clicks inside the card from closing the modal, and scrolling from leaking out.
+        InputShield {}
     }
 }

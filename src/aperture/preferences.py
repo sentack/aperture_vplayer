@@ -123,6 +123,16 @@ class PreferencesController(QObject):
 
     hardwareDecoding = Property(bool, _get_hardware, _set_hardware, notify=changed)
 
+    def _get_single_window(self) -> bool:
+        return self._settings.single_window
+
+    def _set_single_window(self, value: bool) -> None:
+        if bool(value) != self._settings.single_window:
+            self._settings.single_window = bool(value)
+            self._commit()
+
+    singleWindow = Property(bool, _get_single_window, _set_single_window, notify=changed)
+
     @Property(bool, notify=changed)
     def restartNeeded(self) -> bool:
         return self._settings.hardware_decoding != self._running_hardware

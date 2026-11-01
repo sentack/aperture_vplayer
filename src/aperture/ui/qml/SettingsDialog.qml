@@ -16,6 +16,9 @@ Modal {
     cardWidth: 760
     cardHeight: 560
 
+    // A key chip still listening when Settings closes must not keep shortcuts switched off.
+    onOpenChanged: if (!open) keymap.capturing = false
+
     // One choice out of a few, as pills. A value shows as `labels[value]`, else value + suffix.
     component Segmented: Flow {
         id: segmented
@@ -242,6 +245,26 @@ Modal {
                     }
 
                     Note { text: "At most once every 6 hours, and only while another app is the default." }
+                }
+
+                Section {
+                    title: "Windows"
+
+                    Row2 {
+                        text: "Open files in the same window"
+
+                        ToggleSwitch {
+                            label: "Open files in the same window"
+                            checked: prefs.singleWindow
+                            onToggled: checked => prefs.singleWindow = checked
+                        }
+                    }
+
+                    Note {
+                        text: prefs.singleWindow
+                              ? "Files you open while Aperture runs play here, and several selected files open as one playlist."
+                              : "Every file you open from your file manager starts its own Aperture window."
+                    }
                 }
 
                 Section {
