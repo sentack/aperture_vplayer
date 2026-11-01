@@ -40,6 +40,7 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 
 **Library**
 - Playlist with add, remove, next/previous and auto-advance; drop files or whole folders; double-click a row to play it
+- One window: select several videos in your file manager and open them, and they play as one playlist; opening a file while Aperture runs plays it in the open window
 - Recent files on the start screen
 - Resumes where you left off, per file, and forgets once you finish
 

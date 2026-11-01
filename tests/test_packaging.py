@@ -113,11 +113,13 @@ def _fake_bundle(root, windows=False):
         files += ["_internal/PySide6/plugins/multimedia/ffmpegmediaplugin.dll"]
         files += [f"_internal/PySide6/{lib}-61.dll" for lib in ("avcodec", "avformat", "avutil")]
         files += ["_internal/PySide6/swresample-5.dll", "_internal/PySide6/swscale-8.dll"]
+        files += ["_internal/PySide6/Qt6Network.dll"]
     else:
         files += ["_internal/PySide6/Qt/plugins/multimedia/libffmpegmediaplugin.so"]
         lib = "_internal/PySide6/Qt/lib"
         files += [f"{lib}/lib{name}.so.61" for name in ("avcodec", "avformat", "avutil")]
         files += [f"{lib}/libswresample.so.5", f"{lib}/libswscale.so.8"]
+        files += [f"{lib}/libQt6Network.so.6"]
     for name in files:
         (root / name).parent.mkdir(parents=True, exist_ok=True)
         (root / name).touch()
@@ -129,6 +131,12 @@ def test_check_bundle_accepts_complete_builds(tmp_path):
     _fake_bundle(tmp_path / "windows", windows=True)
     assert check(tmp_path / "linux") == []
     assert check(tmp_path / "windows") == []
+    # macOS keeps Qt as frameworks: the library is the extension-less framework binary.
+    mac = tmp_path / "linux/_internal/PySide6/Qt/lib"
+    (mac / "libQt6Network.so.6").unlink()
+    (mac / "QtNetwork.framework/Versions/A").mkdir(parents=True)
+    (mac / "QtNetwork.framework/Versions/A/QtNetwork").touch()
+    assert check(tmp_path / "linux") == []
 
 
 def test_check_bundle_reports_missing_codecs_and_webengine(tmp_path):
@@ -138,6 +146,8 @@ def test_check_bundle_reports_missing_codecs_and_webengine(tmp_path):
     (tmp_path / "_internal/PySide6/Qt/lib/libQt6WebEngineCore.so.6").touch()
     problems = check(tmp_path)
     assert "missing: libavcodec (decoders)" in problems
+    (tmp_path / "_internal/PySide6/Qt/lib/libQt6Network.so.6").unlink()
+    assert "missing: QtNetwork (single instance)" in check(tmp_path)
     assert any(p.startswith("unexpected: Qt WebEngine") for p in problems)
     assert check(tmp_path / "nope") == [f"{tmp_path / 'nope'} is not a directory"]
 
