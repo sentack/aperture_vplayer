@@ -121,11 +121,17 @@ def test_lyrics_save_and_embed(ui, app, tmp_path):
     app.processEvents()
     assert lyrics.property("audioFile") and not lyrics.property("available")
 
-    lyrics.save([{"time": 1000, "text": "first"}, {"time": 3000, "text": "second"}], True)
+    lyrics.save([{"time": 1000, "text": "first"}, {"time": 3000, "text": "second"}])
     app.processEvents()
-    assert (tmp_path / "Song.lrc").read_text(encoding="utf-8").startswith("[00:01.00]first")
-    assert read_embedded(song).startswith("[00:01.00]first")
+    assert read_embedded(song).startswith("[00:01.00]first")  # into the file itself
+    assert not (tmp_path / "Song.lrc").exists()  # no sidecar for a format that holds lyrics
     assert lyrics.property("synced") and lyrics.property("plainText") == "first\nsecond"
+
+    wav = tmp_path / "Take.wav"  # can't hold lyrics: they go beside it
+    wav.write_bytes(bytes(64))
+    player.mediaLoaded.emit(str(wav))
+    lyrics.save([{"time": -1, "text": "plain"}])
+    assert (tmp_path / "Take.lrc").read_text(encoding="utf-8") == "plain\n"
 
     player.mediaLoaded.emit("")
     app.processEvents()
@@ -378,5 +384,137 @@ def test_single_window_setting_toggles_from_settings(ui, app):
     app.processEvents()
     assert prefs.property("singleWindow") is False
     prefs.setProperty("singleWindow", True)
+    app.processEvents()
+    assert messages(warnings) == []
+
+
+def test_repeat_and_shuffle_cycle_and_are_remembered(ui, app, tmp_path):
+    from aperture.settings import Settings
+
+    _, player, warnings = ui
+    player.cycleRepeat()
+    player.cycleRepeat()
+    player.toggleShuffle()
+    app.processEvents()
+    assert player.property("repeatMode") == "one" and player.property("shuffle") is True
+    saved = Settings(tmp_path / "settings.json")  # the ui fixture keeps its data in tmp_path
+    assert saved.repeat == "one" and saved.shuffle is True
+    player.cycleRepeat()
+    assert player.property("repeatMode") == "off"
+    assert messages(warnings) == []
+
+
+class FakeNetwork:
+    """Stands in for OnlineSearch._send: answers each request from a script, synchronously."""
+
+    def __init__(self, *answers):
+        self.answers = list(answers)  # (status, body) per request, in order
+        self.requests = []
+
+    def __call__(self, method, url, headers, body, done):
+        self.requests.append((method, bytes(url.toEncoded()).decode(), headers, body))
+        status, data = self.answers.pop(0)
+        done(status, data, status is None or status >= 400)
+
+
+def test_lyrics_search_embeds_the_chosen_result(ui, app, tmp_path):
+    import json
+
+    from aperture.core.lyrics_tags import read_embedded
+
+    engine, player, warnings = ui
+    online = engine.rootContext().contextProperty("online")
+    song = tmp_path / "Band - Song.mp3"
+    song.write_bytes(bytes(512))
+    player.mediaLoaded.emit(str(song))
+    assert online.property("canSearchLyrics") and not online.property("canSearchSubtitles")
+
+    online.begin("lyrics")
+    assert online.property("fields")["artist"] == "Band"  # from the file name: no tags
+    synced = "[00:01.00]one\n[00:02.00]two"
+    answer = [{"trackName": "Song", "artistName": "Band", "duration": 200, "syncedLyrics": synced}]
+    online._send = FakeNetwork((200, json.dumps(answer).encode()))
+    online.searchLyrics("Song", "Band", "")
+    assert "track_name=Song" in online._send.requests[0][1]
+    assert online.property("results")[0]["badge"] == "Synced"
+
+    chosen = []
+    online.chosen.connect(lambda: chosen.append(True))
+    online.choose(0)
+    assert chosen and read_embedded(song).startswith("[00:01.00]one")
+    lyrics = engine.rootContext().contextProperty("lyrics")
+    assert lyrics.property("synced") and lyrics.property("source") == "Embedded"
+    assert messages(warnings) == []
+
+
+def test_lyrics_search_failures_are_messages(ui, app, tmp_path):
+    engine, player, _ = ui
+    online = engine.rootContext().contextProperty("online")
+    player.mediaLoaded.emit(str(tmp_path / "a.mp3"))
+    online.begin("lyrics")
+    online._send = FakeNetwork((200, b"[]"), (None, b""), (503, b""))
+    online.searchLyrics("Nothing", "", "")
+    assert online.property("status").startswith("No lyrics found")
+    online.searchLyrics("Song", "", "")
+    assert online.property("status").startswith("Couldn't reach LRCLIB")
+    online.searchLyrics("Song", "", "")
+    assert "unavailable" in online.property("status") and not online.property("busy")
+    online.searchLyrics("  ", "", "")
+    assert "title" in online.property("status")
+
+
+def test_subtitle_search_needs_a_key_then_downloads_next_to_the_video(ui, app, tmp_path):
+    import json
+
+    engine, player, warnings = ui
+    online = engine.rootContext().contextProperty("online")
+    prefs = engine.rootContext().contextProperty("prefs")
+    video = tmp_path / "The.Movie.2014.1080p.mkv"
+    video.write_bytes(b"")
+    player.mediaLoaded.emit(str(video))
+    online.begin("subtitles")
+    assert online.property("fields")["title"] == "The Movie"
+    assert online.property("needsKey")
+    online._send = FakeNetwork()
+    online.searchSubtitles("The Movie", "2014", "en")
+    assert "API key" in online.property("status") and online._send.requests == []
+
+    prefs.setProperty("openSubtitlesKey", "  secret-key ")
+    assert not online.property("needsKey")
+    found = {"language": "en", "release": "The.Movie.2014", "files": [{"file_id": 7}]}
+    search = {"data": [{"attributes": found}]}
+    online._send = FakeNetwork(
+        (200, json.dumps(search).encode()),
+        (200, json.dumps({"link": "https://dl.example/7.srt"}).encode()),
+        (200, b"1\n00:00:01,000 --> 00:00:02,000\nHello\n"),
+    )
+    online.searchSubtitles("The Movie", "2014", "en")
+    method, url, headers, _ = online._send.requests[0]
+    assert headers["Api-Key"] == "secret-key" and headers["User-Agent"].startswith("Aperture v")
+    assert "query=The%20Movie" in url and "year=2014" in url
+    online.choose(0)
+    assert [r[0] for r in online._send.requests] == ["GET", "POST", "GET"]
+    assert json.loads(online._send.requests[1][3]) == {"file_id": 7}
+    saved = tmp_path / "The.Movie.2014.1080p.en.srt"
+    assert saved.read_bytes().endswith(b"Hello\n")
+    assert player.tracks.property("subtitleOptions")[-1] == saved.name
+    assert messages(warnings) == []
+
+
+def test_search_dialog_and_menu_entries_load_cleanly(ui, app, tmp_path):
+    from PySide6.QtCore import QObject
+
+    engine, player, warnings = ui
+    window = engine.rootObjects()[0]
+    player.mediaLoaded.emit(str(tmp_path / "clip.mkv"))
+    dialog = window.findChild(QObject, "searchDialog")
+    dialog.begin("subtitles")
+    app.processEvents()
+    assert dialog.property("open")
+    dialog.close()
+    menu = window.findChild(QObject, "quickMenu")
+    menu.open()
+    app.processEvents()
+    menu.close()
     app.processEvents()
     assert messages(warnings) == []

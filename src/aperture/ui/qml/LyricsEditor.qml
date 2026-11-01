@@ -3,7 +3,7 @@ import QtQuick.Controls.Basic as T
 
 // Create lyrics for the playing audio file.
 // Write: type or paste one line per lyric. Sync: play the track and tap as each line starts.
-// Save writes <name>.lrc next to the file and can also embed it in the file's tags.
+// Save stores the lyrics inside the audio file (a .lrc beside it for formats that can't).
 Modal {
     id: editor
 
@@ -47,9 +47,9 @@ Modal {
         rows = copy
     }
 
-    function save(embed) {
+    function save() {
         const out = syncing ? rows : input.text.split("\n").map(t => ({ text: t.trim(), time: -1 }))
-        lyrics.save(out, embed)
+        lyrics.save(out)
         open = false
     }
 
@@ -152,15 +152,9 @@ Modal {
         layoutDirection: Qt.RightToLeft
 
         PillButton {
-            text: lyrics.canEmbed ? "Save and embed" : "Save .lrc"
+            text: lyrics.canEmbed ? "Save to file" : "Save .lrc"
             primary: true
-            onClicked: editor.save(lyrics.canEmbed)
-        }
-
-        PillButton {
-            text: "Save .lrc only"
-            visible: lyrics.canEmbed
-            onClicked: editor.save(false)
+            onClicked: editor.save()
         }
 
         PillButton {

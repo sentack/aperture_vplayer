@@ -50,6 +50,8 @@ Item {
     Bound { action: "subtitle_later"; onActivated: tracks.nudgeSubtitles(100) }
     Bound { action: "next"; onActivated: player.playNext() }
     Bound { action: "previous"; onActivated: player.playPrevious() }
+    Bound { action: "repeat"; onActivated: player.cycleRepeat() }
+    Bound { action: "shuffle"; onActivated: player.toggleShuffle() }
     Bound { action: "fullscreen"; onActivated: keys.fullscreenToggled() }
     Bound { action: "mini_player"; onActivated: keys.miniToggled() }
     Bound { action: "screenshot"; onActivated: player.screenshot() }

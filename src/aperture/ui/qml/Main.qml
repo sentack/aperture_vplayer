@@ -153,11 +153,12 @@ Window {
 
     KeyBindings {
         fullscreen: root.fullscreen
-        modalOpen: root.settingsOpen || lyricsEditor.open || urlDialog.open
+        modalOpen: root.settingsOpen || lyricsEditor.open || urlDialog.open || searchDialog.open
         onModalClosed: {
             root.settingsOpen = false
             lyricsEditor.open = false
             urlDialog.open = false
+            searchDialog.close()
         }
         onSettingsToggled: root.toggleSettings()
         onFullscreenToggled: root.toggleFullscreen()
@@ -235,6 +236,7 @@ Window {
             onSubtitleFileRequested: subtitleDialog.open()
             onFullscreenRequested: root.toggleFullscreen()
             onSettingsRequested: root.toggleSettings()
+            onSearchOnlineRequested: kind => searchDialog.begin(kind)
         }
 
         Column {
@@ -461,6 +463,7 @@ Window {
             visible: lyrics.audioFile && !root.mini
             onLoadRequested: lyricsDialog.open()
             onEditRequested: lyricsEditor.begin()
+            onSearchRequested: searchDialog.begin("lyrics")
         }
 
         // External SRT/VTT cues; embedded subtitle streams are drawn by VideoOutput itself.
@@ -532,7 +535,19 @@ Window {
         objectName: "urlDialog"
     }
 
+    OnlineSearchDialog {
+        id: searchDialog
+        objectName: "searchDialog"
+        // The subtitle search needs a key first: Settings opens on the Subtitles page.
+        onSettingsRequested: {
+            searchDialog.close()
+            settingsDialog.page = 3
+            root.settingsOpen = true
+        }
+    }
+
     SettingsDialog {
+        id: settingsDialog
         objectName: "settingsDialog"
         open: root.settingsOpen && !root.mini
         onCloseRequested: root.settingsOpen = false

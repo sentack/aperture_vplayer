@@ -40,6 +40,7 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 
 **Library**
 - Playlist with add, remove, next/previous and auto-advance; drop files or whole folders; double-click a row to play it
+- Repeat all, repeat one or no repeat (R), and shuffle (Shift+S), remembered between sessions
 - One window: select several videos in your file manager and open them, and they play as one playlist; opening a file while Aperture runs plays it in the open window
 - Recent files on the start screen
 - Resumes where you left off, per file, and forgets once you finish
@@ -47,6 +48,7 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 **Subtitles and audio**
 - Embedded subtitle tracks, plus `.srt` / `.vtt` files — same-name files next to the video load automatically
 - Subtitle delay (G / H) to fix out-of-sync subtitle files
+- Search for subtitles online (right-click menu): pick one and it's saved next to the video as `Name.en.srt` and shown at once. Uses OpenSubtitles, which needs your own free API key (see below)
 - Audio track switching for multi-language files
 
 **Look and feel**
@@ -56,8 +58,10 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 **Audio and lyrics**
 - Plays MP3, FLAC, M4A, Ogg, Opus, WAV and more
 - Synced lyrics that scroll with the song, Spotify-style; click a line to jump there
-- Lyrics come from a `.lrc` / `.txt` file next to the track, or from the file's own tags
-- Write lyrics, tap along to sync them, then save a `.lrc` and embed it in MP3, FLAC, M4A, Ogg or Opus tags
+- Search for lyrics online (right-click menu, or "Search online" on the lyrics panel) from LRCLIB, free and without an account; the form starts from the file's tags and can be corrected
+- Lyrics are saved into the audio file itself, so they travel with it: synced lyrics as ID3 SYLT (with the words in USLT) in MP3, a LYRICS tag in FLAC, Ogg and Opus, ©lyr in M4A. Formats that can't hold lyrics, such as WAV, get a `.lrc` next to them
+- Write lyrics yourself and tap along to sync them; they are saved the same way
+- Lyrics are read from the file's tags first, then from a `.lrc` / `.txt` next to it
 
 **Settings** (gear at the right of the control bar, or Ctrl+, / ⌘,)
 - **General:** make Aperture the default player, reset everything to defaults
@@ -113,6 +117,8 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 | `H` | Subtitles later (+100 ms) |
 | `N` | Next in playlist |
 | `P` | Previous in playlist |
+| `R` | Repeat: off, all, one |
+| `Shift+S` | Shuffle on / off |
 | `F` | Fullscreen |
 | `Ctrl+P` | Picture-in-picture |
 | `S` | Screenshot |
@@ -126,6 +132,16 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 Every key except the fixed ones can be changed in **Settings → Keyboard shortcuts**: click a key, press the new combination. Each key does one thing; system shortcuts such as Alt+F4 are refused.
 
 On macOS, Ctrl means ⌘.
+
+## Subtitle search: OpenSubtitles API key
+
+OpenSubtitles requires an API key for searches and downloads, and each user brings their own:
+
+1. Create a free account at [opensubtitles.com](https://www.opensubtitles.com).
+2. In your profile, open **API consumers**, create one, and copy its key.
+3. Paste it in **Settings → Subtitles → Subtitle search** and press **Save key**.
+
+The free tier allows a limited number of downloads per day; Aperture says so when the limit is reached. Lyrics search (LRCLIB) needs no key.
 
 ## Your data
 

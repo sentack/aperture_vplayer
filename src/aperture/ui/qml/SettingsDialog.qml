@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic as T
 import "Icons.js" as Icons
 
 // Settings, as a modal opened from the gear at the right edge of the control bar.
@@ -205,6 +206,8 @@ Modal {
         clip: true
         contentHeight: pages.implicitHeight + 28
         boundsBehavior: Flickable.StopAtBounds
+        // Pages taller than the card (Keyboard shortcuts, About) scroll with a visible bar.
+        T.ScrollBar.vertical: GlassScrollBar { rightPadding: 6 }
 
         Column {
             id: pages
@@ -478,6 +481,48 @@ Modal {
                     }
 
                     Note { text: "Size applies to .srt and .vtt files. Embedded tracks use the video's own styling." }
+                }
+
+                Section {
+                    title: "Subtitle search"
+
+                    Note {
+                        text: "Search for subtitles online uses OpenSubtitles.com, which needs an API key. "
+                              + "Create a free account, add an API consumer under your profile, then paste its key here."
+                    }
+
+                    TextBox {
+                        id: subtitleKey
+                        width: parent.width
+                        label: "OpenSubtitles API key"
+                        placeholder: "Paste your key"
+                        echoMode: TextInput.Password
+                        text: prefs.openSubtitlesKey
+                        onAccepted: prefs.openSubtitlesKey = text
+                    }
+
+                    Row {
+                        spacing: 8
+
+                        PillButton {
+                            text: "Save key"
+                            primary: true
+                            enabled: subtitleKey.text.trim() !== prefs.openSubtitlesKey
+                            onClicked: {
+                                prefs.openSubtitlesKey = subtitleKey.text
+                                player.noticed(prefs.openSubtitlesKey ? "OpenSubtitles key saved" : "OpenSubtitles key removed")
+                            }
+                        }
+
+                        PillButton {
+                            text: "Remove"
+                            visible: prefs.openSubtitlesKey !== ""
+                            onClicked: {
+                                prefs.openSubtitlesKey = ""
+                                subtitleKey.text = ""
+                            }
+                        }
+                    }
                 }
             }
 

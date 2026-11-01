@@ -7,6 +7,7 @@ Item {
 
     signal loadRequested()
     signal editRequested()
+    signal searchRequested()
 
     readonly property color accent: theme.accent
 
@@ -104,6 +105,12 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             topPadding: 8
             spacing: 8
+
+            PillButton {
+                text: "Search online"
+                primary: true
+                onClicked: view.searchRequested()
+            }
 
             PillButton {
                 text: "Load lyrics file"

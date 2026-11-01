@@ -63,6 +63,7 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     from aperture.keys import KeymapController
     from aperture.player import PlayerController
     from aperture.player.lyrics import LyricsController
+    from aperture.player.online import OnlineSearch
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
     from aperture.preferences import PreferencesController
     from aperture.settings import Settings
@@ -91,6 +92,23 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
 
     follow_prefs()
     prefs.changed.connect(follow_prefs)
+
+    # Repeat and shuffle carry over to the next session.
+    player.repeatMode = settings.repeat
+    player.shuffle = settings.shuffle
+
+    def remember_play_mode() -> None:
+        settings.repeat = player.repeatMode
+        settings.shuffle = player.shuffle
+        settings.save()
+
+    player.playModeChanged.connect(remember_play_mode)
+
+    def reset_play_mode() -> None:
+        player.repeatMode = settings.repeat
+        player.shuffle = settings.shuffle
+
+    prefs.resetDone.connect(reset_play_mode)
     defaults = DefaultPlayerController(settings, ICON_PATH, app)
     defaults.noticed.connect(player.noticed)
     lyrics = LyricsController(player, app)
@@ -114,6 +132,9 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     context.setContextProperty("appearance", appearance)
     context.setContextProperty("prefs", prefs)
     context.setContextProperty("keymap", keymap)
+    online = OnlineSearch(player, lyrics, player.tracks, settings, data_dir, app)
+    online.noticed.connect(player.noticed)
+    context.setContextProperty("online", online)
     updates = UpdateController(data_dir, detect(), load_build_info(), app.quit, app)
     updates.noticed.connect(player.noticed)
     context.setContextProperty("updates", updates)

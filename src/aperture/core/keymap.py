@@ -47,6 +47,9 @@ ACTIONS: tuple[Action, ...] = (
     Action("subtitle_later", "Subtitles later (+100 ms)", SOUND, "H"),
     Action("next", "Next in playlist", WINDOW, "N"),
     Action("previous", "Previous in playlist", WINDOW, "P"),
+    Action("repeat", "Repeat: off, all, one", WINDOW, "R"),
+    # S is Screenshot, so shuffle takes Shift+S; either can be rebound in Settings.
+    Action("shuffle", "Shuffle on / off", WINDOW, "Shift+S"),
     Action("fullscreen", "Fullscreen", WINDOW, "F"),
     Action("mini_player", "Picture-in-picture", WINDOW, "Ctrl+P"),
     Action("screenshot", "Screenshot", WINDOW, "S"),
