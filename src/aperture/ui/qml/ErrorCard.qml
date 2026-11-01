@@ -15,8 +15,8 @@ Rectangle {
     Accessible.role: Accessible.AlertMessage
     Accessible.name: `${player.errorTitle}. ${player.error}`
 
-    // Keep clicks on the card from toggling playback underneath.
-    MouseArea { anchors.fill: parent }
+    // Keep clicks and scrolling on the card from reaching the video underneath.
+    InputShield {}
 
     Column {
         id: content
