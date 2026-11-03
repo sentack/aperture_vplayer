@@ -1,103 +1,62 @@
-# Aperture 0.7.0
+# Aperture 0.8.0
 
-Fixes for the problems that got in the way every day: dead shortcuts, hidden window buttons, lyrics that scrolled along with the playlist, and one window per file. It also adds repeat and shuffle, online lyrics and subtitle search, and lyrics saved into your music files.
+Playlists you can keep. Save a playlist and open it again later, pick up any of your recent playlists with one click, and see how long every item is. Aperture also stops guessing when you open more files while something is playing: it asks.
 
 ## Downloads
-- **Windows 10/11 (x64):** `Aperture-0.7.0-windows-x64-setup.exe`
-- **macOS 12+ (Apple Silicon):** `Aperture-0.7.0-macos-arm64.dmg`
-- **Linux (x86-64):** `Aperture-0.7.0-x86_64.AppImage`, or `Aperture-0.7.0-linux-x64.tar.xz`
+- **Windows 10/11 (x64):** `Aperture-0.8.0-windows-x64-setup.exe`
+- **macOS 12+ (Apple Silicon):** `Aperture-0.8.0-macos-arm64.dmg`
+- **Linux (x86-64):** `Aperture-0.8.0-x86_64.AppImage`, or `Aperture-0.8.0-linux-x64.tar.xz`
 
-Already on 0.6.0? Open **Settings → About → Check for updates**.
-
-## Fixed
-
-### Keyboard shortcuts no longer stop working
-After you changed a shortcut in **Settings → Keyboard shortcuts**, every shortcut (pause, seeking, volume, all of them) stopped responding until Aperture was restarted. The same happened if you clicked a key to change it and then pressed **Reset shortcuts** or **×** instead of a key. Shortcuts now keep working, whatever you do in Settings.
-
-### Window buttons are visible on every video
-Minimize, maximize and close could disappear against the video, especially dark buttons on a dark film in the light theme. While a video plays they now sit on a dark, see-through backing with white icons, readable on bright and dark scenes alike, in either theme. The "APERTURE" title and the fade along the top of the window follow the same rule.
-
-### Scrolling stays where your pointer is
-Scrolling the playlist no longer scrolls the lyrics behind it once the playlist reaches its end. The same goes for the control bar, the prompt cards and every dialog: scrolling over them never moves anything underneath.
-
-### Opening several files gives one window, not one per file
-Selecting several videos in your file manager and opening them used to start a separate Aperture for each file, which happened every time on Windows. Now they open together in one window, as one playlist (see **One window** below).
+Already on 0.7.0? Open **Settings → About → Check for updates**.
 
 ## New
 
-### One window, one playlist
-- Files you open while Aperture is running play in the open window, which comes to the front (on Linux with Wayland, the system may highlight it in the taskbar instead). No second window appears.
-- Several files opened together, for example a multi-file selection in Explorer, Finder or your Linux file manager, become **one playlist sorted by name** (Episode 2 before Episode 10). They start with the first.
-- A file opened a few seconds later replaces the playlist and plays straight away, just as before.
-- Starting Aperture again while it is open brings the existing window to the front.
-- **Prefer separate windows?** Turn off **Settings → General → Windows → Open files in the same window**. The change applies immediately, no restart needed.
+### Save and open playlists
+The playlist panel has two new buttons, **Open playlist** and **Save playlist**, next to Add.
+- **Save playlist** writes the current playlist to a file. Two formats are offered:
+  - **Aperture playlist (`.aplaylist`)**, the default. Double-click it later and it opens in Aperture.
+  - **M3U playlist (`.m3u8`)**, for playing the same list in other players such as VLC, mpv or foobar2000.
+- Files in the same folder as the playlist, or in folders inside it, are saved by their place relative to the playlist. Move or copy the whole folder, to another drive or another computer, and the playlist still finds them. Files elsewhere are saved with their full path, and network streams as their address.
+- **Open playlist** loads a saved playlist in place of the current one. It opens `.aplaylist` files, and `.m3u` / `.m3u8` playlists made by other players, including ones saved on Windows and older playlists in other text encodings.
+- Playlist files can also be opened from your file manager, dropped onto the window, or added with **Add**, which appends their items to the playlist instead of replacing it.
+- Files a playlist lists that no longer exist are skipped, and a message says how many: "Not found: 3 files from the playlist". The rest play as usual.
+- Live-stream `.m3u8` links (HLS) are not playlists: they still play as streams, as before.
 
-### Repeat and shuffle — `R` and `Shift+S`
-Two new buttons next to Stop in the control bar. Each lights up in your accent colour while it's on.
-- **Repeat** cycles **Off → All → One** with each click, or with `R`:
-  - **Off:** playback stops after the last item.
-  - **All:** the playlist starts over from the top after the last item; Previous on the first item goes to the last.
-  - **One:** the current file plays again whenever it reaches its end. Next and Previous still move through the playlist.
-- **Shuffle** (`Shift+S`) plays every item once, in random order, starting from the one playing now. Previous retraces the shuffled order. With Repeat All on, each new round is reshuffled. Files you add while shuffling are mixed into what's still to come. Turning shuffle off goes back to the playlist's own order.
-- Opening files with shuffle on starts from a random one of them.
-- A short message confirms each change ("Repeat one", "Shuffle on").
-- Both settings are remembered the next time you open Aperture. **Reset to defaults** turns them off.
+### `.aplaylist` opens in Aperture
+Aperture playlists get their own file type, so double-clicking one opens it in Aperture on every platform:
+- **Windows:** the installer registers `.aplaylist`. This happens whether or not you chose to associate video files.
+- **macOS:** Aperture declares `.aplaylist` as its own type, so Finder opens it in Aperture.
+- **Linux:** Aperture registers the type with your desktop the first time it starts, if it has a desktop entry. Running the AppImage without one? The first time you save a playlist, Aperture adds its desktop entry and registers the type then.
 
-### Search for lyrics online
-For songs without lyrics, right-click and choose **Search for lyrics online…**, or press **Search online** on the lyrics panel.
-- Lyrics come from **LRCLIB**, a free, open lyrics library. No account or key needed.
-- The search form starts with the song's **title, artist and album from its tags**, or from a file name like "Artist - Title". Tags are often wrong or missing, so every field can be edited before you search; only the title is required.
-- Results show the title, artist, album and length, with a **Synced** or **Plain** badge. Synced lyrics come first, then the versions whose length is closest to your file, so the right recording is usually at the top.
-- Pick a result and its lyrics show immediately and are saved into the song (see below). Synced lyrics scroll with the music, as before.
+Aperture only claims `.aplaylist`. Which app opens your `.m3u` files is left unchanged.
 
-### Lyrics are saved inside your music files
-Lyrics now travel with the song instead of living in a separate file next to it. This applies whether you found them online or typed and synced them yourself in the lyrics editor:
-- **MP3:** synced lyrics with their timing (ID3 SYLT), plus the plain words (USLT) for players that can't show synced lyrics.
-- **FLAC, Ogg and Opus:** a LYRICS tag.
-- **M4A:** the standard lyrics tag.
-- **WAV and other formats that can't hold lyrics:** a `.lrc` file next to the song, as before.
+### Recent playlists
+Your playlists are remembered, so you can go back to one without saving it first.
+- Press the **clock button** in the playlist panel to see them, newest first. Each shows its name, number of items, total length and when you last used it, for example **Season 2**, "10 items · 7:24:10 · Yesterday". Saved ones are marked **saved**.
+- Click one to open it again. Hover it and press **×** to remove it from the list, or use the trash button to clear the whole list.
+- A playlist is remembered when you save it or open a playlist file, and whenever a playlist of two or more items is replaced, cleared or still open when you quit Aperture.
+- Unsaved playlists are named after the folder their files share ("Season 2"), or after their first file ("Intro.mp4 + 4 more").
+- Up to 12 are kept. When the playlist is empty, the recent playlists show in the panel by themselves.
 
-The lyrics editor's two save buttons ("Save and embed", "Save .lrc only") are now one: **Save to file**.
+### Each item's length
+Every row of the playlist now shows how long it is (`3:42`), and the panel's header shows the number of items and the total length of the whole playlist (`12 · 48:10`). Hovering a row shows its × remove button in place of the length.
 
-When a song opens, lyrics stored in the file itself are shown first. If it has none, a `.lrc` or `.txt` next to it is used. Lyrics saved by earlier versions of Aperture still show.
+Lengths are read in the background, so a long playlist opens just as fast as before and its lengths fill in a moment later. Network streams, and files that can't be read, show no length. The total appears once every length is known.
 
-### Search for subtitles online
-Right-click a video and choose **Search for subtitles online…**
-- Subtitles come from **OpenSubtitles**.
-- The form starts with the **title and year guessed from the file name**. For example, `Blade.Runner.2049.2017.2160p.mkv` becomes "Blade Runner 2049" and 2017. Release tags such as 1080p, BluRay or x264 are ignored. The **language** starts as your system's language. All three can be changed; several languages are separated by commas (`en,fr`).
-- Results list the release name, language and number of downloads, most downloaded first, and mark subtitles for the hearing impaired.
-- Pick one and it is downloaded, saved **next to the video** as `Name.en.srt`, and shown right away. Aperture loads that file automatically the next time you play the video. An existing subtitle file is never overwritten: a number is added instead. If the video's folder can't be written to, the subtitle is kept in Aperture's own data folder and still shown.
+### Opening files while something is playing
+Before, opening a file from your file manager while Aperture was playing replaced the whole playlist. Now Aperture asks what you meant:
+- **Add to current playlist** appends the files to the end, and what's playing carries on.
+- **Open in new window** starts a separate Aperture window for them, with its own playlist. Files you open after that still go to your first window.
+- **Cancel** opens nothing.
 
-**One-time setup:** OpenSubtitles requires a personal API key.
-1. Create a free account at opensubtitles.com.
-2. In your profile, open **API consumers**, create one and copy its key.
-3. In Aperture, open **Settings → Subtitles → Subtitle search**, paste the key and press **Save key**.
+The question lists the files you opened. Several files from one selection are asked about together, once. This applies to files coming from outside Aperture, such as your file manager, **Open with**, or Finder. Inside Aperture, **Open file** still replaces the playlist and **Add** still appends to it.
 
-Until a key is saved, the search explains this and offers a button that opens the right Settings page. Your key stays on this computer and is sent only to OpenSubtitles. **Reset to defaults** keeps it; **Remove** deletes it.
+If you turned off **Settings → General → Windows → Open files in the same window**, nothing changes: every file you open gets its own window, without a question.
 
-### When a search doesn't work
-Searches depend on outside services, so every outcome gets a plain message in the dialog instead of an error:
-- **No results:** "No lyrics found" or "No subtitles found", with a hint to try fewer words or another language.
-- **No connection:** "Couldn't reach LRCLIB" or "Couldn't reach OpenSubtitles".
-- **The service is down:** "unavailable right now, try again later".
-- **Too many searches in a short time:** try again in a minute.
-- **A wrong key:** OpenSubtitles refused the API key, check it in Settings.
-- **Today's download limit used up:** the free OpenSubtitles tier allows a limited number of downloads per day; try again tomorrow.
-
-A search in progress can be cancelled at any time, and closing the dialog stops it.
-
-### Scrollbars in Settings and the playlist
-Long Settings pages, such as Keyboard shortcuts and About, and long playlists now show a slim scrollbar that widens under the pointer, so nothing is cut off at the bottom.
-
-## New shortcuts
-- `R`: Repeat (off, all, one)
-- `Shift+S`: Shuffle on / off. `S` stays Screenshot.
-
-**If you had set `R` or `Shift+S` for something else yourself:** after updating, that action goes back to its default key, and `R` / `Shift+S` start repeat and shuffle. To keep your own choice, open **Settings → Keyboard shortcuts**, free the key from Repeat or Shuffle with ×, then click your action and press the key again. This will be smoother in a later release.
-
-Every shortcut can be changed in Settings → Keyboard shortcuts.
+## Fixed
+- **Linux AppImage: restarting from Settings.** A setting that needs a restart could fail to start Aperture again when running the AppImage. It now restarts the AppImage you started it from.
 
 ## Good to know
-- Online search needs an internet connection. Only what you typed in the search form is sent (and, to OpenSubtitles, your API key). The files you search for stay on your computer.
-- Searching for subtitles is offered for video files, and searching for lyrics for audio files. Neither is offered for network streams, since they have no file to save to.
-- Subtitle downloads are `.srt` files, which work with subtitle delay (`G` / `H`) and text size like any other subtitle file.
+- An `.aplaylist` file is plain text, in the same format as an `.m3u8` playlist. It can be opened in a text editor, or renamed to `.m3u8` to use it in another player.
+- Saving a playlist never moves or changes the files in it.
+- Recent playlists are stored on this computer only, in Aperture's data folder, with the rest of your settings.

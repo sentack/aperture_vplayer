@@ -178,9 +178,9 @@ Package locally:
 ```sh
 pip install -e ".[build]"
 pyinstaller --noconfirm packaging/aperture.spec             # -> dist/aperture/ (+ dist/Aperture.app on macOS)
-iscc /DAppVersion=0.7.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
-packaging/linux/build-appimage.sh 0.7.0                     # Linux, needs appimagetool
-packaging/macos/build-dmg.sh 0.7.0                          # macOS, needs Xcode command-line tools
+iscc /DAppVersion=0.8.0 packaging\windows\aperture.iss      # Windows, needs Inno Setup 6
+packaging/linux/build-appimage.sh 0.8.0                     # Linux, needs appimagetool
+packaging/macos/build-dmg.sh 0.8.0                          # macOS, needs Xcode command-line tools
 ```
 
 `build-dmg.sh` ad-hoc signs by default. Set `MACOS_SIGN_IDENTITY` to sign with a Developer ID certificate, and `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` to notarize.
@@ -190,7 +190,7 @@ The icon is generated from code: `python packaging/make_icons.py`.
 ## Releasing
 
 1. Bump `__version__` in `src/aperture/__init__.py`.
-2. Tag and push: `git tag v0.7.0 && git push origin v0.7.0`.
+2. Tag and push: `git tag v0.8.0 && git push origin v0.8.0`.
 
 The release workflow tests, builds the Windows installer, the Linux AppImage and tarball, and the macOS disk image, then publishes them to a GitHub release.
 
