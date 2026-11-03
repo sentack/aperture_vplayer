@@ -144,6 +144,24 @@ Window {
     }
 
     FileDialog {
+        id: openPlaylistDialog
+        title: "Open playlist"
+        nameFilters: ["Playlists (*.aplaylist *.m3u *.m3u8)", "All files (*)"]
+        currentFolder: player.mediaFolder
+        onAccepted: player.openUrls([selectedFile])
+    }
+
+    FileDialog {
+        id: savePlaylistDialog
+        title: "Save playlist"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["Aperture playlist (*.aplaylist)", "M3U playlist, for other players (*.m3u8)"]
+        defaultSuffix: "aplaylist"
+        currentFolder: player.mediaFolder
+        onAccepted: playlists.save(selectedFile)
+    }
+
+    FileDialog {
         id: lyricsDialog
         title: "Load lyrics"
         nameFilters: ["Lyrics (*.lrc *.txt)", "All files (*)"]
@@ -154,11 +172,13 @@ Window {
     KeyBindings {
         fullscreen: root.fullscreen
         modalOpen: root.settingsOpen || lyricsEditor.open || urlDialog.open || searchDialog.open
+                   || opening.pending
         onModalClosed: {
             root.settingsOpen = false
             lyricsEditor.open = false
             urlDialog.open = false
             searchDialog.close()
+            opening.dismiss()
         }
         onSettingsToggled: root.toggleSettings()
         onFullscreenToggled: root.toggleFullscreen()
@@ -525,6 +545,8 @@ Window {
             anchors { right: parent.right; top: topBar.bottom; bottom: controlBar.top; rightMargin: 32; topMargin: 8; bottomMargin: 16 }
             visible: root.playlistOpen && !root.mini
             onAddRequested: root.chooseFiles(true)
+            onOpenRequested: openPlaylistDialog.open()
+            onSaveRequested: savePlaylistDialog.open()
         }
     }
 
@@ -533,6 +555,11 @@ Window {
     OpenUrlDialog {
         id: urlDialog
         objectName: "urlDialog"
+    }
+
+    OpenChoiceDialog {
+        objectName: "openChoice"
+        visible: opacity > 0 && !root.mini
     }
 
     OnlineSearchDialog {
