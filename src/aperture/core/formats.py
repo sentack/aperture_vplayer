@@ -15,6 +15,8 @@ AUDIO_EXTENSIONS = frozenset(
     {".aac", ".aiff", ".alac", ".flac", ".m4a", ".mp3", ".oga", ".ogg", ".opus", ".wav", ".wma"}
 )
 MEDIA_EXTENSIONS = VIDEO_EXTENSIONS | AUDIO_EXTENSIONS
+# Aperture's own playlist type first; .m3u / .m3u8 from other players open too.
+PLAYLIST_EXTENSIONS = frozenset({".aplaylist", ".m3u", ".m3u8"})
 
 
 def is_video(path: Path | str) -> bool:
@@ -34,8 +36,9 @@ def dialog_filters() -> list[str]:
         return " ".join(f"*{ext}" for ext in sorted(extensions))
 
     return [
-        f"Media files ({patterns(MEDIA_EXTENSIONS)})",
+        f"Media files and playlists ({patterns(MEDIA_EXTENSIONS | PLAYLIST_EXTENSIONS)})",
         f"Video files ({patterns(VIDEO_EXTENSIONS)})",
         f"Audio files ({patterns(AUDIO_EXTENSIONS)})",
+        f"Playlists ({patterns(PLAYLIST_EXTENSIONS)})",
         "All files (*)",
     ]

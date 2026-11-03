@@ -41,7 +41,10 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 **Library**
 - Playlist with add, remove, next/previous and auto-advance; drop files or whole folders; double-click a row to play it
 - Repeat all, repeat one or no repeat (R), and shuffle (Shift+S), remembered between sessions
-- One window: select several videos in your file manager and open them, and they play as one playlist; opening a file while Aperture runs plays it in the open window
+- Each entry shows its length, and the header the playlist's total
+- Save the playlist (as Aperture's own `.aplaylist`, or `.m3u8` for other players) and open it later; double-clicking an `.aplaylist` opens it in Aperture. `.m3u` / `.m3u8` playlists from other players open too
+- Recent playlists: the ones you saved, opened, or played through and replaced come back with one click (clock button in the playlist)
+- One window: select several videos in your file manager and open them, and they play as one playlist. Opening files while a playlist plays asks whether to add them to it or open them in a new window
 - Recent files on the start screen
 - Resumes where you left off, per file, and forgets once you finish
 
