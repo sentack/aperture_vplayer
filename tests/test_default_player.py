@@ -74,7 +74,9 @@ def test_linux_claim_installs_appimage_entry(tmp_path, monkeypatch):
 def test_mime_types_match_desktop_entry():
     desktop = (ROOT / "packaging" / "linux" / "io.github.sentack.Aperture.desktop").read_text()
     declared = re.search(r"^MimeType=(.*)$", desktop, re.M).group(1)
-    assert set(filter(None, declared.split(";"))) == set(default_player.MIME_TYPES)
+    # The video types, plus Aperture's own playlist type.
+    assert set(filter(None, declared.split(";"))) == set(default_player.ENTRY_MIME_TYPES)
+    assert default_player.PLAYLIST_MIME not in default_player.MIME_TYPES  # never claimed as video
 
 
 def test_installer_registers_default_apps_capabilities():
@@ -161,3 +163,26 @@ def test_default_is_left_alone(xdg, old_name, default):
     new = tmp_path / "Aperture-0.6.0-x86_64.AppImage"
     assert default_player.refresh_default_appimage(new, "0.6.0", icon, FakeRun(default)) is None
     assert default_player.entry_target() == old
+
+
+def test_playlist_type_registers_itself_once_an_entry_exists(tmp_path, monkeypatch):
+    monkeypatch.setattr(default_player.sys, "platform", "linux")
+    monkeypatch.setattr(default_player.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_DATA_DIRS", str(tmp_path / "none"))
+    monkeypatch.setenv("APPIMAGE", str(tmp_path / "Aperture-0.8.0-x86_64.AppImage"))
+    run = FakeRun("other.desktop")
+    # No desktop entry yet: nothing to register until the user saves a playlist.
+    assert default_player.register_playlist_type(tmp_path / "icon.svg", False, run) is False
+    assert run.calls == []
+    assert default_player.register_playlist_type(tmp_path / "icon.svg", True, run) is True
+    entry = (tmp_path / "applications" / default_player.DESKTOP_FILE).read_text()
+    assert default_player.PLAYLIST_MIME in entry
+    xml = tmp_path / "mime" / "packages" / "io.github.sentack.Aperture.xml"
+    assert xml.read_text() == default_player.MIME_XML
+    claim = ["xdg-mime", "default", default_player.DESKTOP_FILE, default_player.PLAYLIST_MIME]
+    assert claim in run.calls
+    # Already done: a second pass changes nothing.
+    run.calls.clear()
+    assert default_player.register_playlist_type(tmp_path / "icon.svg", False, run) is True
+    assert [c[:2] for c in run.calls] == [["xdg-mime", "query"]]

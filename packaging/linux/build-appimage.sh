@@ -19,12 +19,14 @@ tool="${APPIMAGETOOL:-appimagetool}"
 rm -rf "$appdir"
 mkdir -p "$appdir/usr/bin" \
          "$appdir/usr/share/applications" \
+         "$appdir/usr/share/mime/packages" \
          "$appdir/usr/share/icons/hicolor/256x256/apps" \
          "$appdir/usr/share/icons/hicolor/scalable/apps"
 
 cp -a "$dist/aperture/." "$appdir/usr/bin/"
 cp "$root/packaging/linux/$app_id.desktop" "$appdir/usr/share/applications/"
 cp "$root/packaging/linux/$app_id.desktop" "$appdir/"
+cp "$root/packaging/linux/$app_id.xml" "$appdir/usr/share/mime/packages/"  # .aplaylist type
 cp "$root/packaging/icons/aperture-256.png" "$appdir/usr/share/icons/hicolor/256x256/apps/$app_id.png"
 cp "$root/packaging/icons/aperture.svg" "$appdir/usr/share/icons/hicolor/scalable/apps/$app_id.svg"
 cp "$root/packaging/icons/aperture-256.png" "$appdir/$app_id.png"

@@ -5,6 +5,7 @@ Skipped when PySide6 is not installed.
 """
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -517,4 +518,61 @@ def test_search_dialog_and_menu_entries_load_cleanly(ui, app, tmp_path):
     app.processEvents()
     menu.close()
     app.processEvents()
+    assert messages(warnings) == []
+
+
+def test_playlists_are_remembered_saved_and_reopened(ui, app, tmp_path):
+    engine, player, warnings = ui
+    playlists = engine.rootContext().contextProperty("playlists")
+    videos = [tmp_path / name for name in ("Ep 1.mkv", "Ep 2.mkv", "Ep 3.mkv")]
+    for video in videos:
+        video.write_bytes(b"")
+    player.open_paths(videos)
+    player.clearPlaylist()  # a cleared playlist of two or more is remembered
+    (first,) = playlists.property("recent")
+    assert first["name"] == tmp_path.name and first["detail"].startswith("3 items")
+
+    playlists.open(0)
+    assert [Path(p).name for p in player.playlist_items()] == ["Ep 1.mkv", "Ep 2.mkv", "Ep 3.mkv"]
+    from PySide6.QtCore import QUrl
+
+    assert playlists.save(QUrl.fromLocalFile(str(tmp_path / "Binge")))  # suffix added
+    saved = tmp_path / "Binge.aplaylist"
+    assert saved.read_text().splitlines()[2] == "Ep 1.mkv"  # relative to its folder
+    assert playlists.property("recent")[0]["name"] == "Binge"
+
+    player.clearPlaylist()
+    player.open_paths([saved])  # double-clicking the file does this
+    assert len(player.playlist_items()) == 3
+    assert playlists.property("recent")[0]["saved"] == str(saved)
+    playlists.remove(0)
+    assert all(r["name"] != "Binge" for r in playlists.property("recent"))
+    assert messages(warnings) == []
+
+
+def test_files_opened_from_outside_ask_before_joining(ui, app, tmp_path):
+    from PySide6.QtCore import QObject
+
+    engine, player, warnings = ui
+    opening = engine.rootContext().contextProperty("opening")
+    window = engine.rootObjects()[0]
+    started = []
+    opening._new_window = started.append  # what "Open in new window" would launch
+    a, b = tmp_path / "a.mkv", tmp_path / "b.mkv"
+    for f in (a, b):
+        f.write_bytes(b"")
+    player.open_paths([a])
+    opening.offer([str(b)])
+    opening.offer([str(b)])  # the same file again joins, not doubles
+    app.processEvents()
+    assert opening.property("pending") and opening.property("names") == ["b.mkv"]
+    assert window.findChild(QObject, "openChoice").property("open")
+    opening.addToPlaylist()
+    assert [Path(p).name for p in player.playlist_items()] == ["a.mkv", "b.mkv"]
+    opening.offer([str(tmp_path / "c.mkv")])
+    opening.openInNewWindow()
+    assert started == [[str(tmp_path / "c.mkv")]] and not opening.property("pending")
+    opening.offer([str(a)])
+    opening.dismiss()
+    assert len(player.playlist_items()) == 2
     assert messages(warnings) == []

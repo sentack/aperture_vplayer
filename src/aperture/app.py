@@ -42,10 +42,27 @@ def apply_decoder_choice(hardware_decoding: bool) -> None:
 
 
 def restart_command() -> tuple[str, list[str]]:
-    """Program and arguments that start Aperture again, frozen or from source."""
+    """Program and arguments that start Aperture again, frozen or from source.
+
+    An AppImage is started from its file, not from the executable inside its mount: that
+    mount goes away when this process exits.
+    """
+    appimage = os.environ.get("APPIMAGE")
+    if appimage:
+        return appimage, []
     if getattr(sys, "frozen", False):
         return sys.executable, []
     return sys.executable, ["-m", "aperture"]
+
+
+def start_new_window(files: list[str]) -> bool:
+    """Start a separate Aperture window playing `files`."""
+    from PySide6.QtCore import QProcess
+
+    from aperture.core.launch import NEW_WINDOW_FLAG
+
+    program, arguments = restart_command()
+    return bool(QProcess.startDetached(program, [*arguments, NEW_WINDOW_FLAG, *files]))
 
 
 def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
@@ -64,6 +81,7 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     from aperture.player import PlayerController
     from aperture.player.lyrics import LyricsController
     from aperture.player.online import OnlineSearch
+    from aperture.player.playlists import PlaylistLibrary
     from aperture.player.thumbnails import PROVIDER_ID, ThumbnailImages, ThumbnailService
     from aperture.preferences import PreferencesController
     from aperture.settings import Settings
@@ -71,6 +89,8 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     from aperture.update.controller import UpdateController
     from aperture.update.install import detect
     from aperture.build import load_build_info
+    from aperture.core.playlist_history import PlaylistHistory
+    from aperture.opening import OpenChoice
 
     settings = settings if settings is not None else Settings(data_dir / "settings.json")
     player = PlayerController(History(data_dir / "history.json"), app)
@@ -135,6 +155,17 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     online = OnlineSearch(player, lyrics, player.tracks, settings, data_dir, app)
     online.noticed.connect(player.noticed)
     context.setContextProperty("online", online)
+    playlists = PlaylistLibrary(player, PlaylistHistory(data_dir / "playlists.json"), parent=app)
+    playlists.noticed.connect(player.noticed)
+    playlists.saved.connect(lambda _: defaults.register_playlists())
+    context.setContextProperty("playlists", playlists)
+
+    def open_elsewhere(files: list[str]) -> None:
+        if not start_new_window(files):
+            player.noticed.emit("Couldn't open a new window")
+
+    opening = OpenChoice(player.add_paths, open_elsewhere, app)
+    context.setContextProperty("opening", opening)
     updates = UpdateController(data_dir, detect(), load_build_info(), app.quit, app)
     updates.noticed.connect(player.noticed)
     context.setContextProperty("updates", updates)
@@ -171,15 +202,17 @@ def run(argv: list[str] | None = None) -> int:
     setup_logging(data_dir)
     qInstallMessageHandler(_qt_message)
 
-    from aperture.core.launch import absolute_args
+    from aperture.core.launch import absolute_args, split_new_window
     from aperture.instance import LaunchRouter, claim, take_over
 
     # Single window (the default): if Aperture is already running, it takes these files and
     # this launch ends here. A multi-file "Open" that starts one process per file becomes
     # one playlist this way. With the setting off, every launch is its own window.
-    launch_args = absolute_args(app.arguments()[1:], os.getcwd())
+    # "Open in new window" launches keep their own window and leave the role to the first.
+    new_window, raw_args = split_new_window(app.arguments()[1:])
+    launch_args = absolute_args(raw_args, os.getcwd())
     instance = None
-    if settings.single_window:
+    if settings.single_window and not new_window:
         forwarded, instance = claim(data_dir, launch_args)
         if forwarded:
             return 0
@@ -213,18 +246,29 @@ def run(argv: list[str] | None = None) -> int:
 
     window = engine.rootObjects()[0]
 
+    opening = engine.rootContext().contextProperty("opening")
+
     def open_files(files: list[str]) -> None:
-        if len(files) == 1 and is_url(files[0]):
+        # A playlist is already playing: ask whether these join it or get their own window.
+        if player.playlist_items():
+            opening.offer(files)
+        elif len(files) == 1 and is_url(files[0]):
             player.openUrl(files[0])
         else:
             player.open_paths(files)
+
+    def add_files(files: list[str]) -> None:
+        if opening.pending:
+            opening.offer(files)  # more of the same selection, while the question is up
+        else:
+            player.add_paths(files)
 
     def bring_to_front() -> None:
         window.setWindowStates(window.windowStates() & ~Qt.WindowState.WindowMinimized)
         window.raise_()
         window.requestActivate()
 
-    router = LaunchRouter(open_files, player.add_paths, bring_to_front, parent=app)
+    router = LaunchRouter(open_files, add_files, bring_to_front, parent=app)
 
     def receive(args: list[str]) -> None:
         router.submit(args, from_elsewhere=True)

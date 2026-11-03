@@ -21,6 +21,10 @@ var exitFullscreen = { stroke: "M4 9h4a1 1 0 0 0 1-1V4M20 9h-4a1 1 0 0 1-1-1V4M4
 
 var playlist = { stroke: "M9.5 7H20M9.5 12H20M9.5 17H20", fill: "M3.6 7a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0ZM3.6 12a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0ZM3.6 17a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0Z" }
 var add = { stroke: "M12 5v14M5 12h14" }
+// Playlist files: a floppy-free "save" (tray with a down arrow), an open folder, a clock.
+var save = { stroke: "M12 4v10M7.5 9.5L12 14l4.5-4.5M5 15.5v2A1.5 1.5 0 0 0 6.5 19h11a1.5 1.5 0 0 0 1.5-1.5v-2" }
+var folderOpen = { stroke: "M4 18.5V6.5A1.5 1.5 0 0 1 5.5 5h3.6l2 2h6.4A1.5 1.5 0 0 1 19 8.5v1.5M4 18.5l2.2-6.6a1.5 1.5 0 0 1 1.4-1h12.1a1 1 0 0 1 .95 1.3L18.6 17.5a1.5 1.5 0 0 1-1.4 1H4Z" }
+var history = { stroke: "M12 7.5V12l3 2M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v3h3" }
 var trash = { stroke: "M5 7h14M10 7V5h4v2M7 7l.8 11.2a1.5 1.5 0 0 0 1.5 1.3h5.4a1.5 1.5 0 0 0 1.5-1.3L17 7" }
 
 var settings = { stroke: "M4 7h7.7M16.3 7H20M4 17h1.7M10.3 17H20M11.7 7a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0ZM5.7 17a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0Z" }

@@ -8,5 +8,5 @@ Icon=io.github.sentack.Aperture
 Terminal=false
 Categories=AudioVideo;Video;Player;Qt;
 Keywords=video;player;movie;mkv;mp4;subtitles;
-MimeType=video/3gpp;video/mp2t;video/mp4;video/mpeg;video/ogg;video/quicktime;video/webm;video/x-flv;video/x-m4v;video/x-matroska;video/x-ms-wmv;video/x-msvideo;
+MimeType=video/3gpp;video/mp2t;video/mp4;video/mpeg;video/ogg;video/quicktime;video/webm;video/x-flv;video/x-m4v;video/x-matroska;video/x-ms-wmv;video/x-msvideo;application/x-aperture-playlist;
 StartupNotify=true

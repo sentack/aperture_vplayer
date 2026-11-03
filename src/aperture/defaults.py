@@ -41,6 +41,7 @@ class DefaultPlayerController(QObject):
         self._status: bool | None = None
         self._can_claim = False
         self._prompt = False
+        self._playlists_registered = False
 
         self._timer = QTimer(self)
         self._timer.setInterval(CHECK_INTERVAL_MS)
@@ -74,8 +75,17 @@ class DefaultPlayerController(QObject):
 
     askEnabled = Property(bool, _get_ask, _set_ask, notify=changed)
 
+    def register_playlists(self, create_entry: bool = True) -> None:
+        """Make sure double-clicking an .aplaylist opens Aperture (Linux; installers and the
+        macOS bundle declare it elsewhere)."""
+        if sys.platform.startswith("linux"):
+            default_player.register_playlist_type(self._icon, create_entry)
+
     @Slot()
     def check(self) -> None:
+        if not self._playlists_registered:
+            self._playlists_registered = True
+            self.register_playlists(create_entry=False)
         self._refresh_appimage()
         self._status = default_player.status()
         self._can_claim = default_player.can_claim()

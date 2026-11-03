@@ -8,6 +8,8 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from aperture.core.formats import is_media
+from aperture.core.media import is_url
+from aperture.core.playlist_file import is_playlist, read_playlist
 
 log = logging.getLogger(__name__)
 
@@ -19,14 +21,29 @@ def natural_key(path: Path) -> list[object]:
     return [int(part) if part.isdigit() else part.casefold() for part in _DIGITS.split(path.name)]
 
 
-def expand_paths(paths: Iterable[Path | str]) -> list[Path]:
-    """Files pass through untouched; a folder contributes its video and audio files in natural order.
+def expand_paths(
+    paths: Iterable[Path | str], missing: list[Path] | None = None
+) -> list[Path | str]:
+    """Files pass through untouched; a folder contributes its media files in natural order;
+    a playlist file contributes its entries.
 
-    Folders are not searched recursively. Missing paths are dropped.
+    Folders are not searched recursively, nor playlists inside playlists. Missing paths are
+    dropped; playlist entries that are gone are added to `missing`, for a notice.
     """
-    result: list[Path] = []
-    for path in map(Path, paths):
-        if path.is_file():
+    result: list[Path | str] = []
+    for item in paths:
+        if is_url(item):
+            result.append(str(item))
+            continue
+        path = Path(item)
+        entries = read_playlist(path) if is_playlist(path) and path.is_file() else None
+        if entries is not None:
+            for entry in entries:
+                if is_url(entry) or (Path(entry).is_file() and not is_playlist(entry)):
+                    result.append(entry)
+                elif missing is not None:
+                    missing.append(Path(entry))
+        elif path.is_file():
             result.append(path)
         elif path.is_dir():
             try:

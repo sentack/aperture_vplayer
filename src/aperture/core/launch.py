@@ -21,6 +21,15 @@ from aperture.core.media import is_url
 # Short enough that double-clicking another video a moment later still switches to it.
 APPEND_WINDOW_S = 1.5
 MAX_MESSAGE_BYTES = 1 << 20  # thousands of paths; anything longer is not from Aperture
+# "Open in new window" starts Aperture with this flag: that launch keeps its own window
+# instead of handing its files to the one already running.
+NEW_WINDOW_FLAG = "--new-window"
+
+
+def split_new_window(args: Sequence[str]) -> tuple[bool, list[str]]:
+    """Whether NEW_WINDOW_FLAG was given, and the arguments without it."""
+    rest = [arg for arg in args if arg != NEW_WINDOW_FLAG]
+    return len(rest) != len(args), rest
 
 
 def absolute_args(args: Iterable[str], cwd: str | Path) -> list[str]:

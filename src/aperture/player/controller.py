@@ -33,7 +33,9 @@ from aperture.core.media import (
     screenshot_name,
 )
 from aperture.core.playlist import REPEAT_ALL, REPEAT_MODES, REPEAT_OFF, REPEAT_ONE
+from aperture.core.playlist_file import is_playlist
 from aperture.player.boost import AudioBoost, make_capture
+from aperture.player.durations import DurationProbe
 from aperture.player.tracks import TrackSelector, is_subtitle
 from aperture.player.urls import to_paths
 
@@ -87,6 +89,11 @@ class PlayerController(QObject):
     hasVideoChanged = Signal()
     resumeOfferChanged = Signal()
     playModeChanged = Signal()  # repeat or shuffle
+    durationsChanged = Signal()  # lengths of playlist items became known
+    # A playlist of two or more items is being replaced, cleared or closed: its items.
+    playlistRetired = Signal(list)
+    # A playlist file was opened: its path and the items it contained.
+    playlistFileOpened = Signal(str, list)
 
     def __init__(self, history: History | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -116,6 +123,9 @@ class PlayerController(QObject):
         self._player.setAudioOutput(self._audio)
         self.tracks = TrackSelector(self._player, self)
         self.tracks.noticed.connect(self.noticed)
+        self.durations = DurationProbe(self)
+        self.durations.changed.connect(self.durationsChanged)
+        self.playlistChanged.connect(lambda: self.durations.request(list(self._playlist.items)))
 
         self._checkpoint_timer = QTimer(self)
         self._checkpoint_timer.setInterval(CHECKPOINT_INTERVAL_MS)
@@ -128,7 +138,7 @@ class PlayerController(QObject):
 
         self._player.playbackStateChanged.connect(self._on_playback_state)
         self._player.positionChanged.connect(self._on_position)
-        self._player.durationChanged.connect(lambda _: self.durationChanged.emit())
+        self._player.durationChanged.connect(self._on_duration)
         self._player.seekableChanged.connect(self._on_seekable)
         self._player.hasVideoChanged.connect(lambda _: self.hasVideoChanged.emit())
         self._player.metaDataChanged.connect(self._on_metadata)
@@ -315,6 +325,23 @@ class PlayerController(QObject):
     def currentIndex(self) -> int:
         return self._playlist.index
 
+    @Property(list, notify=durationsChanged)
+    def playlistDurations(self) -> list[str]:
+        """Each item's length ("3:42"), "" while unknown; streams never have one."""
+        lengths = [self.durations.duration(item) for item in self._playlist.items]
+        return [format_time(ms / 1000) if ms else "" for ms in lengths]
+
+    @Property(str, notify=durationsChanged)
+    def playlistLength(self) -> str:
+        """Total length of the playlist, once every item's length is known."""
+        lengths = [self.durations.duration(item) for item in self._playlist.items]
+        if len(lengths) < 2 or None in lengths:
+            return ""
+        return format_time(sum(lengths) / 1000)
+
+    def playlist_items(self) -> list[Path | str]:
+        return list(self._playlist.items)
+
     @Property(bool, notify=playlistChanged)
     def hasNext(self) -> bool:
         return self._playlist.has_next
@@ -372,23 +399,34 @@ class PlayerController(QObject):
         self._sink = output.property("videoSink")
 
     def open_paths(self, paths: Iterable[Path | str]) -> None:
-        """Replace the playlist and start its first file. Folders expand to their videos."""
+        """Replace the playlist and start its first file.
+
+        Folders expand to their media files, playlist files to their entries.
+        """
         paths = list(paths)
         self._report_missing(paths)
-        files = expand_paths(paths)
+        gone: list[Path] = []
+        files = expand_paths(paths, gone)
+        self._report_gone(gone)
         if not files:
             return
         self._checkpoint()
+        self._retire()
         self._playlist.clear()
         self._playlist.add(files)
         self._load(self._playlist.next_index())  # the first file, or a random one shuffled
+        if len(paths) == 1 and is_playlist(paths[0]):
+            self.playlistFileOpened.emit(str(Path(paths[0]).absolute()), [str(f) for f in files])
 
     def add_paths(self, paths: Iterable[Path | str]) -> None:
         """Append to the playlist; start playing only if nothing is loaded."""
         paths = list(paths)
         self._report_missing(paths)
         start = len(self._playlist)
-        if not self._playlist.add(expand_paths(paths)):
+        gone: list[Path] = []
+        added = self._playlist.add(expand_paths(paths, gone))
+        self._report_gone(gone)
+        if not added:
             return
         if self._playlist.current is None:
             self._load(start)
@@ -423,6 +461,7 @@ class PlayerController(QObject):
 
     @Slot()
     def clearPlaylist(self) -> None:
+        self._retire()
         self._playlist.clear()
         self._unload()
 
@@ -540,6 +579,7 @@ class PlayerController(QObject):
             self.noticed.emit("That doesn't look like a video address (http, https, rtsp…)")
             return False
         self._checkpoint()
+        self._retire()
         self._playlist.clear()
         self._playlist.add([url])
         self._load(0)
@@ -638,10 +678,27 @@ class PlayerController(QObject):
 
     @Slot()
     def shutdown(self) -> None:
-        """Persist the resume point; call before the app quits."""
+        """Persist the resume point and the open playlist; call before the app quits."""
         self._checkpoint()
+        self._retire()
+        self.durations.stop()
 
     # --- internals ---------------------------------------------------------
+
+    def _retire(self) -> None:
+        """Hand a playlist worth remembering to the playlist history before it goes."""
+        if len(self._playlist) >= 2:
+            self.playlistRetired.emit([str(item) for item in self._playlist.items])
+
+    def _on_duration(self, duration_ms: int) -> None:
+        if self._loaded is not None and duration_ms > 0:
+            self.durations.remember(self._loaded, duration_ms)
+        self.durationChanged.emit()
+
+    def _report_gone(self, gone: list[Path]) -> None:
+        if gone:
+            many = f"{len(gone)} files" if len(gone) > 1 else gone[0].name
+            self.noticed.emit(f"Not found: {many} from the playlist")
 
     def _report_missing(self, paths: list[Path | str]) -> None:
         missing = [Path(p) for p in paths if not Path(p).exists()]
