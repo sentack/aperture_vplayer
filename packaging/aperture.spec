@@ -79,6 +79,8 @@ exe = EXE(
 # at the installer / image stage instead (Inno LZMA2, AppImage zstd, tar xz, dmg LZMA).
 coll = COLLECT(exe, a.binaries, a.datas, name="aperture", upx=False)
 
+PLAYLIST_UTI = "io.github.sentack.aperture.playlist"
+
 if sys.platform == "darwin":
     app = BUNDLE(
         coll,
@@ -96,13 +98,37 @@ if sys.platform == "darwin":
             "NSHighResolutionCapable": True,
             # Follow the system light/dark appearance instead of forcing Aqua.
             "NSRequiresAquaSystemAppearance": False,
-            # "Open With" for every container the player knows, without claiming the default.
+            # "Open With" for every container the player knows, without claiming the default;
+            # the owner of its own playlist type, so a double-clicked .aplaylist opens here.
             "CFBundleDocumentTypes": [
                 {
                     "CFBundleTypeName": "Video",
                     "CFBundleTypeRole": "Viewer",
                     "LSHandlerRank": "Alternate",
                     "CFBundleTypeExtensions": sorted(ext.lstrip(".") for ext in VIDEO_EXTENSIONS),
+                },
+                {
+                    "CFBundleTypeName": "Aperture playlist",
+                    "CFBundleTypeRole": "Editor",
+                    "LSHandlerRank": "Owner",
+                    "LSItemContentTypes": [PLAYLIST_UTI],
+                },
+                {
+                    "CFBundleTypeName": "M3U playlist",
+                    "CFBundleTypeRole": "Viewer",
+                    "LSHandlerRank": "Alternate",
+                    "LSItemContentTypes": ["public.m3u-playlist"],
+                },
+            ],
+            "UTExportedTypeDeclarations": [
+                {
+                    "UTTypeIdentifier": PLAYLIST_UTI,
+                    "UTTypeDescription": "Aperture playlist",
+                    "UTTypeConformsTo": ["public.m3u-playlist", "public.plain-text"],
+                    "UTTypeTagSpecification": {
+                        "public.filename-extension": ["aplaylist"],
+                        "public.mime-type": "application/x-aperture-playlist",
+                    },
                 }
             ],
         },

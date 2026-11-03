@@ -106,5 +106,13 @@ Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType:
 Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".webm"; ValueData: "Aperture.Video"; Tasks: associate
 Root: HKA; Subkey: "Software\Aperture\Capabilities\FileAssociations"; ValueType: string; ValueName: ".wmv"; ValueData: "Aperture.Video"; Tasks: associate
 
+; Aperture's own playlist type, .aplaylist: always registered, and as the default, since no
+; other app uses it (the "Open with" task above only covers video types other apps own).
+Root: HKA; Subkey: "Software\Classes\.aplaylist"; ValueType: string; ValueData: "Aperture.Playlist"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.aplaylist"; ValueType: string; ValueName: "Content Type"; ValueData: "application/x-aperture-playlist"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\Aperture.Playlist"; ValueType: string; ValueData: "Aperture playlist"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\Aperture.Playlist\DefaultIcon"; ValueType: string; ValueData: "{app}\{#AppExe},0"
+Root: HKA; Subkey: "Software\Classes\Aperture.Playlist\shell\open\command"; ValueType: string; ValueData: """{app}\{#AppExe}"" ""%1"""
+
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent

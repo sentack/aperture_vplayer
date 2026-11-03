@@ -28,6 +28,20 @@ MIME_TYPES = (
     "video/webm", "video/x-flv", "video/x-m4v", "video/x-matroska", "video/x-ms-wmv",
     "video/x-msvideo",
 )  # fmt: skip
+# Aperture's own playlist type (.aplaylist). It belongs to no other app, so Aperture makes
+# itself the default for it without asking, unlike video types.
+PLAYLIST_MIME = "application/x-aperture-playlist"
+ENTRY_MIME_TYPES = (*MIME_TYPES, PLAYLIST_MIME)
+MIME_XML = f"""<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="{PLAYLIST_MIME}">
+    <comment>Aperture playlist</comment>
+    <sub-class-of type="text/plain"/>
+    <generic-icon name="audio-x-generic"/>
+    <glob pattern="*.aplaylist"/>
+  </mime-type>
+</mime-info>
+"""
 WINDOWS_PROG_IDS = ("Aperture.Video", "Applications\\aperture.exe")
 # Settings → Default apps → Aperture; the name matches RegisteredApplications in the installer.
 WINDOWS_DEFAULT_APPS = "ms-settings:defaultapps?registeredAppUser=Aperture"
@@ -89,7 +103,7 @@ def install_appimage_entry(appimage: Path, icon_svg: Path) -> Path:
         f"Icon={APP_ID}\n"
         "Terminal=false\n"
         "Categories=AudioVideo;Video;Player;Qt;\n"
-        f"MimeType={';'.join(MIME_TYPES)};\n",
+        f"MimeType={';'.join(ENTRY_MIME_TYPES)};\n",
         encoding="utf-8",
     )
     return entry
@@ -164,6 +178,52 @@ def linux_claim(icon_svg: Path, run: Runner = subprocess.run) -> str:
         log.warning("could not set the default player", exc_info=True)
         return FAILED
     return DONE if result.returncode == 0 and linux_status(run) else FAILED
+
+
+def register_playlist_type(
+    icon_svg: Path, create_entry: bool = False, run: Runner = subprocess.run
+) -> bool:
+    """Make .aplaylist files open in Aperture (Linux). True when that is now the case.
+
+    Needs a desktop entry. An AppImage without one gets it only when `create_entry`, which
+    is the case once the user saves a playlist: until then nothing on the system has the type.
+    """
+    if not sys.platform.startswith("linux") or shutil.which("xdg-mime") is None:
+        return False
+    try:
+        appimage = Path(os.environ["APPIMAGE"]) if os.environ.get("APPIMAGE") else None
+        own_entry = _data_home() / "applications" / DESKTOP_FILE
+        if appimage is not None and (
+            (not _desktop_entry_installed() and create_entry)
+            or (own_entry.is_file() and entry_target() == appimage and not _declares_playlists())
+        ):
+            install_appimage_entry(appimage, icon_svg)
+            run(["update-desktop-database", str(own_entry.parent)], capture_output=True, timeout=10)
+        if not _desktop_entry_installed():
+            return False
+        mime = _data_home() / "mime"
+        definition = mime / "packages" / f"{APP_ID}.xml"
+        if not definition.is_file() or definition.read_text(encoding="utf-8") != MIME_XML:
+            definition.parent.mkdir(parents=True, exist_ok=True)
+            definition.write_text(MIME_XML, encoding="utf-8")
+            run(["update-mime-database", str(mime)], capture_output=True, timeout=20)
+        query = ["xdg-mime", "query", "default", PLAYLIST_MIME]
+        current = run(query, capture_output=True, text=True, timeout=5)
+        if current.stdout.strip() != DESKTOP_FILE:
+            claim_type = ["xdg-mime", "default", DESKTOP_FILE, PLAYLIST_MIME]
+            run(claim_type, capture_output=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        log.warning("could not register the playlist file type", exc_info=True)
+        return False
+    return True
+
+
+def _declares_playlists() -> bool:
+    try:
+        text = (_data_home() / "applications" / DESKTOP_FILE).read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return PLAYLIST_MIME in text
 
 
 # --- Windows ------------------------------------------------------------------------------
