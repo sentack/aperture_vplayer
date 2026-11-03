@@ -17,8 +17,9 @@ def test_is_video(name, expected):
 
 
 def test_dialog_filters():
-    media, video, audio, everything = dialog_filters()
+    media, video, audio, playlists, everything = dialog_filters()
     assert "*.mkv" in video and "*.avi" in video and "*.mp3" not in video
     assert "*.mp3" in audio and "*.flac" in audio
-    assert "*.mkv" in media and "*.mp3" in media
+    assert "*.mkv" in media and "*.mp3" in media and "*.aplaylist" in media
+    assert "*.aplaylist" in playlists and "*.m3u8" in playlists and "*.mkv" not in playlists
     assert everything == "All files (*)"

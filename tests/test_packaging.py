@@ -47,7 +47,24 @@ def desktop_entry() -> dict[str, str]:
 def test_desktop_entry_claims_every_video_type():
     assert set(MIME_TYPES) == VIDEO_EXTENSIONS
     declared = set(filter(None, desktop_entry()["MimeType"].split(";")))
-    assert declared == set(MIME_TYPES.values())
+    assert declared == set(MIME_TYPES.values()) | {"application/x-aperture-playlist"}
+
+
+def test_playlist_type_is_declared_on_every_platform():
+    from aperture.system.default_player import MIME_XML
+
+    mime = (PACKAGING / "linux" / "io.github.sentack.Aperture.xml").read_text(encoding="utf-8")
+    assert mime == MIME_XML and '<glob pattern="*.aplaylist"/>' in mime
+    assert "usr/share/mime/packages" in (PACKAGING / "linux" / "build-appimage.sh").read_text()
+    iss = (PACKAGING / "windows" / "aperture.iss").read_text(encoding="utf-8")
+    playlist_lines = [line for line in iss.splitlines() if "aplaylist" in line.casefold()]
+    assert playlist_lines and not any("Tasks:" in line for line in playlist_lines)  # always
+    default = 'Subkey: "Software\\Classes\\.aplaylist"; ValueType: string; '
+    default += 'ValueData: "Aperture.Playlist"'
+    assert default in iss
+    spec = (PACKAGING / "aperture.spec").read_text(encoding="utf-8")
+    assert '"LSHandlerRank": "Owner"' in spec
+    assert '"public.filename-extension": ["aplaylist"]' in spec
 
 
 def test_desktop_entry_matches_app_id():
