@@ -576,3 +576,27 @@ def test_files_opened_from_outside_ask_before_joining(ui, app, tmp_path):
     opening.dismiss()
     assert len(player.playlist_items()) == 2
     assert messages(warnings) == []
+
+
+def test_icons_fill_their_own_box_so_they_centre(ui, app):
+    # Qt's Shape resets its implicit size to its paths' bounding box. Icons then centred a
+    # smaller box than the 24-unit grid they draw on, and sat off-centre (the play button).
+    engine, _, warnings = ui
+    window = engine.rootObjects()[0]
+    window.show()
+    app.processEvents()
+    icons = []
+
+    def walk(item):
+        for child in item.childItems():
+            if child.property("glyph") is not None and child.property("size"):
+                icons.append(child)
+            walk(child)
+
+    walk(window.contentItem())
+    assert icons
+    for icon in icons:
+        size = icon.property("size")
+        assert (icon.width(), icon.height()) == (size, size)
+    assert not messages(warnings)
+
