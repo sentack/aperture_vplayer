@@ -271,6 +271,26 @@ Modal {
                 }
 
                 Section {
+                    title: "Playlists"
+
+                    Row2 {
+                        text: "Save playlist changes automatically"
+
+                        ToggleSwitch {
+                            label: "Save playlist changes automatically"
+                            checked: prefs.autosavePlaylist
+                            onToggled: checked => prefs.autosavePlaylist = checked
+                        }
+                    }
+
+                    Note {
+                        text: prefs.autosavePlaylist
+                              ? "Adding or removing files saves them into the playlist file you opened, right away."
+                              : "Adding or removing files in a playlist you opened from a file shows a Save button in the playlist."
+                    }
+                }
+
+                Section {
                     title: "Reset"
 
                     Note { text: "Put every setting back the way Aperture shipped. Your history and playlist stay." }

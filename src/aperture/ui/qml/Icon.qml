@@ -10,6 +10,10 @@ Shape {
     property real size: 20
     property real strokeWidth: 1.75
 
+    // Explicit, not implicit: Shape resets its implicit size to its paths' bounding box, and
+    // centring that smaller box pushes the glyph off-centre (right and down).
+    width: size
+    height: size
     implicitWidth: size
     implicitHeight: size
     preferredRendererType: Shape.CurveRenderer

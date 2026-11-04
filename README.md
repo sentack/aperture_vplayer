@@ -37,12 +37,14 @@ If a macOS build is not notarized, Gatekeeper blocks its first launch. Open **Sy
 - Chapters in MKV, WebM and MP4 files: ticks on the seek bar, Ctrl+. / Ctrl+, to jump, a Chapters menu
 - Audio boost up to 200%, with a limiter so loud parts don't crackle
 - Controls fade away while you watch, leaving a thin progress line
+- Opens at the size you last left the window, or maximized if you left it maximized
 
 **Library**
 - Playlist with add, remove, next/previous and auto-advance; drop files or whole folders; double-click a row to play it
 - Repeat all, repeat one or no repeat (R), and shuffle (Shift+S), remembered between sessions
 - Each entry shows its length, and the header the playlist's total
 - Save the playlist (as Aperture's own `.aplaylist`, or `.m3u8` for other players) and open it later; double-clicking an `.aplaylist` opens it in Aperture. `.m3u` / `.m3u8` playlists from other players open too
+- Add or remove files in a playlist you opened from a file, then press Save to write the changes back into it, or turn on autosave in Settings
 - Recent playlists: the ones you saved, opened, or played through and replaced come back with one click (clock button in the playlist)
 - One window: select several videos in your file manager and open them, and they play as one playlist. Opening files while a playlist plays asks whether to add them to it or open them in a new window
 - Recent files on the start screen
@@ -148,10 +150,11 @@ The free tier allows a limited number of downloads per day; Aperture says so whe
 
 ## Your data
 
-Aperture keeps three small files in the platform app-data folder — `~/.local/share/Aperture/` on Linux, `%APPDATA%\Aperture\` on Windows, `~/Library/Application Support/Aperture/` on macOS:
+Aperture keeps a few small files in the platform app-data folder — `~/.local/share/Aperture/` on Linux, `%APPDATA%\Aperture\` on Windows, `~/Library/Application Support/Aperture/` on macOS:
 
 - `history.json` — recent files and resume points
-- `settings.json` — everything in Settings
+- `settings.json` — everything in Settings, and the window's size
+- `playlists.json` — recent playlists
 - `aperture.log` — rotating log; attach it to bug reports
 
 Delete any of them to reset that part.

@@ -576,3 +576,122 @@ def test_files_opened_from_outside_ask_before_joining(ui, app, tmp_path):
     opening.dismiss()
     assert len(player.playlist_items()) == 2
     assert messages(warnings) == []
+
+
+def test_icons_fill_their_own_box_so_they_centre(ui, app):
+    # Qt's Shape resets its implicit size to its paths' bounding box. Icons then centred a
+    # smaller box than the 24-unit grid they draw on, and sat off-centre (the play button).
+    engine, _, warnings = ui
+    window = engine.rootObjects()[0]
+    window.show()
+    app.processEvents()
+    icons = []
+
+    def walk(item):
+        for child in item.childItems():
+            if child.property("glyph") is not None and child.property("size"):
+                icons.append(child)
+            walk(child)
+
+    walk(window.contentItem())
+    assert icons
+    for icon in icons:
+        size = icon.property("size")
+        assert (icon.width(), icon.height()) == (size, size)
+    assert not messages(warnings)
+
+
+def test_window_reopens_at_the_size_it_was_left(app, tmp_path):
+    from PySide6.QtCore import QEventLoop, QTimer
+    from PySide6.QtGui import QWindow
+
+    from aperture.app import load_ui
+    from aperture.settings import Settings
+    from aperture.window_memory import SETTLE_MS
+
+    def settle():
+        loop = QEventLoop()
+        QTimer.singleShot(SETTLE_MS + 200, loop.quit)
+        loop.exec()
+
+    def launch():
+        engine, _ = load_ui(app, tmp_path, settings=Settings(path))
+        return engine, engine.rootObjects()[0], engine.rootContext().contextProperty("windowSize")
+
+    def close(engine, window):
+        window.close()
+        engine.deleteLater()
+        _flush_deletes(app)
+        for child in app.children():
+            if type(child).__module__.startswith("aperture."):
+                child.deleteLater()
+        _flush_deletes(app)
+
+    path = tmp_path / "settings.json"
+    settings = Settings(path)
+    settings.window_size = [760, 500]  # fits the offscreen test screen (800 wide)
+    settings.save()
+    engine, window, memory = launch()
+    try:
+        assert (window.width(), window.height()) == (760, 500)
+        window.resize(740, 480)  # the user resizes it
+        settle()
+        window.showMaximized()  # maximizing doesn't replace the size to come back to
+        settle()
+        memory.save()
+    finally:
+        close(engine, window)
+    saved = Settings(path)
+    assert saved.window_size == [740, 480]
+    if not saved.window_maximized:
+        pytest.skip("this platform cannot maximize windows")
+    engine, window, memory = launch()  # reopens maximized, and un-maximizes to that size
+    try:
+        settle()
+        assert window.visibility() == QWindow.Visibility.Maximized
+        window.showNormal()
+        settle()
+        assert (window.width(), window.height()) == (740, 480)
+    finally:
+        close(engine, window)
+
+
+def test_changes_to_a_playlist_file_are_saved_back(ui, app, tmp_path):
+    from PySide6.QtCore import QEventLoop, QTimer
+
+    from aperture.core.playlist_file import read_playlist
+    from aperture.player.playlists import AUTOSAVE_DELAY_MS
+
+    engine, player, warnings = ui
+    playlists = engine.rootContext().contextProperty("playlists")
+    prefs = engine.rootContext().contextProperty("prefs")
+    a, b, c = (tmp_path / f"{n}.mkv" for n in "abc")
+    for f in (a, b, c):
+        f.write_bytes(b"")
+    unplugged = tmp_path / "usb" / "x.mkv"  # listed, but not there right now
+    saved = tmp_path / "Mine.aplaylist"
+    saved.write_text(f"#EXTM3U\na.mkv\n{unplugged}\nb.mkv\n")
+    player.open_paths([saved])
+    assert playlists.property("fileName") == "Mine.aplaylist"
+    assert not playlists.property("unsaved")
+
+    player.add_paths([c])
+    assert playlists.property("unsaved")  # the Save button shows
+    assert playlists.saveChanges()
+    assert read_playlist(saved) == [a, unplugged, b, c]  # the missing one is kept
+    assert not playlists.property("unsaved")
+
+    prefs.setProperty("autosavePlaylist", True)
+    player.removeIndex(0)  # a.mkv
+    loop = QEventLoop()
+    QTimer.singleShot(AUTOSAVE_DELAY_MS + 300, loop.quit)
+    loop.exec()
+    assert read_playlist(saved) == [unplugged, b, c]
+    assert not playlists.property("unsaved")
+
+    player.add_paths([a])  # a change still waiting is written before the playlist goes
+    player.clearPlaylist()
+    assert read_playlist(saved) == [unplugged, b, c, a]
+    assert playlists.property("fileName") == ""
+    prefs.setProperty("autosavePlaylist", False)
+    assert messages(warnings) == []

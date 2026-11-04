@@ -94,3 +94,27 @@ def _entry(item: Path | str, folder: Path) -> str:
         return path.relative_to(folder).as_posix()
     except ValueError:
         return str(path)
+
+
+def keep_missing(entries: list, loaded: list, current: list) -> list:
+    """What to write back into a playlist file: `current`, with the file's other entries kept.
+
+    `entries` is what the file lists, `loaded` what of it opened (files that exist), and
+    `current` the playlist now. Entries that didn't open (a drive not plugged in, a nested
+    playlist) were never in the playlist to remove, so they stay where they were: after the
+    nearest entry before them that is still in the playlist.
+    """
+    opened = {str(item) for item in loaded}
+    kept = {str(item) for item in current}
+    following: dict[str | None, list] = {}
+    before = None
+    for entry in entries:
+        if str(entry) not in opened:
+            following.setdefault(before, []).append(entry)
+        elif str(entry) in kept:
+            before = str(entry)
+    result = list(following.pop(None, []))
+    for item in current:
+        result.append(item)
+        result.extend(following.pop(str(item), []))
+    return result

@@ -102,11 +102,13 @@ Window {
         }
     }
 
-    width: 1440
-    height: 900
+    // The size the user last left the window at (see WindowMemory), fitted to this screen.
+    width: windowSize.width
+    height: windowSize.height
     minimumWidth: mini ? 320 : 720
     minimumHeight: mini ? 180 : 450
     visible: true
+    Component.onCompleted: if (windowSize.maximized) showMaximized()
     flags: mini ? Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint : Qt.Window | Qt.FramelessWindowHint
     title: player.title ? `${player.title} — Aperture` : "Aperture"
     color: theme.bg_0

@@ -100,8 +100,8 @@ class AudioBoost(QObject):
         if self._capture is None:
             self.unavailable.emit("Audio boost needs a newer Qt (6.8 or later)")
             return False
-        self._player.setAudioOutput(None)
         self._player.setAudioBufferOutput(self._capture)
+        self._player.setAudioOutput(None)
         self._boosting = True
         return True
 
@@ -109,8 +109,8 @@ class AudioBoost(QObject):
         if not self._boosting:
             return
         self._boosting = False
-        self._player.setAudioBufferOutput(None)
         self._player.setAudioOutput(self._output)
+        self._player.setAudioBufferOutput(None)
         if self._sink is not None:
             self._sink.stop()
             self._sink.deleteLater()
