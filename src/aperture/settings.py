@@ -40,11 +40,18 @@ DEFAULTS: dict[str, object] = {
     "repeat": "off",  # playlist repeat: off, all, one
     "shuffle": False,
     "opensubtitles_key": "",  # the user's own API key, needed for subtitle search
+    # The main window's last normal size ([] until it has one) and whether it was maximized.
+    "window_size": [],
+    "window_maximized": False,
 }
 
 
 def _number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def _whole(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def _valid(key: str, value: object) -> bool:
@@ -73,7 +80,12 @@ def _valid(key: str, value: object) -> bool:
             return isinstance(value, dict) and all(
                 k in ACTION_IDS and isinstance(v, str) for k, v in value.items()
             )
-        case "hardware_decoding" | "single_window" | "shuffle":
+        case "window_size":
+            return isinstance(value, list) and (
+                value == []
+                or (len(value) == 2 and all(_whole(v) and 0 < v <= 100_000 for v in value))
+            )
+        case "hardware_decoding" | "single_window" | "shuffle" | "window_maximized":
             return isinstance(value, bool)
         case "repeat":
             return value in REPEAT_MODES
@@ -114,6 +126,8 @@ class Settings:
     repeat = _field("repeat")
     shuffle = _field("shuffle")
     opensubtitles_key = _field("opensubtitles_key")
+    window_size = _field("window_size")
+    window_maximized = _field("window_maximized")
 
     @property
     def start_rate(self) -> float:
@@ -126,9 +140,11 @@ class Settings:
         return SUBTITLE_SIZES[self._values["subtitle_size"]]
 
     def reset(self) -> None:
-        # Kept: when the default-player question was last asked (bookkeeping), and the
-        # OpenSubtitles key (an account credential the user would have to look up again).
-        keep = {key: self._values[key] for key in ("ask_default_last", "opensubtitles_key")}
+        # Kept: when the default-player question was last asked and the window's size
+        # (bookkeeping, not preferences), and the OpenSubtitles key (an account credential
+        # the user would have to look up again).
+        kept = ("ask_default_last", "opensubtitles_key", "window_size", "window_maximized")
+        keep = {key: self._values[key] for key in kept}
         self._values = dict(DEFAULTS, **keep)
 
     def save(self) -> None:

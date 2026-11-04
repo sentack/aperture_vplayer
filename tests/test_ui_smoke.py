@@ -600,3 +600,58 @@ def test_icons_fill_their_own_box_so_they_centre(ui, app):
         assert (icon.width(), icon.height()) == (size, size)
     assert not messages(warnings)
 
+
+def test_window_reopens_at_the_size_it_was_left(app, tmp_path):
+    from PySide6.QtCore import QEventLoop, QTimer
+    from PySide6.QtGui import QWindow
+
+    from aperture.app import load_ui
+    from aperture.settings import Settings
+    from aperture.window_memory import SETTLE_MS
+
+    def settle():
+        loop = QEventLoop()
+        QTimer.singleShot(SETTLE_MS + 200, loop.quit)
+        loop.exec()
+
+    def launch():
+        engine, _ = load_ui(app, tmp_path, settings=Settings(path))
+        return engine, engine.rootObjects()[0], engine.rootContext().contextProperty("windowSize")
+
+    def close(engine, window):
+        window.close()
+        engine.deleteLater()
+        _flush_deletes(app)
+        for child in app.children():
+            if type(child).__module__.startswith("aperture."):
+                child.deleteLater()
+        _flush_deletes(app)
+
+    path = tmp_path / "settings.json"
+    settings = Settings(path)
+    settings.window_size = [760, 500]  # fits the offscreen test screen (800 wide)
+    settings.save()
+    engine, window, memory = launch()
+    try:
+        assert (window.width(), window.height()) == (760, 500)
+        window.resize(740, 480)  # the user resizes it
+        settle()
+        window.showMaximized()  # maximizing doesn't replace the size to come back to
+        settle()
+        memory.save()
+    finally:
+        close(engine, window)
+    saved = Settings(path)
+    assert saved.window_size == [740, 480]
+    if not saved.window_maximized:
+        pytest.skip("this platform cannot maximize windows")
+    engine, window, memory = launch()  # reopens maximized, and un-maximizes to that size
+    try:
+        settle()
+        assert window.visibility() == QWindow.Visibility.Maximized
+        window.showNormal()
+        settle()
+        assert (window.width(), window.height()) == (740, 480)
+    finally:
+        close(engine, window)
+

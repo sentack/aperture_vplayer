@@ -91,6 +91,7 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     from aperture.build import load_build_info
     from aperture.core.playlist_history import PlaylistHistory
     from aperture.opening import OpenChoice
+    from aperture.window_memory import WindowMemory
 
     settings = settings if settings is not None else Settings(data_dir / "settings.json")
     player = PlayerController(History(data_dir / "history.json"), app)
@@ -170,7 +171,13 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     updates.noticed.connect(player.noticed)
     context.setContextProperty("updates", updates)
     context.setContextProperty("thumbs", thumbnails)
+    screen = app.primaryScreen().availableGeometry()
+    window_memory = WindowMemory(settings, (screen.width(), screen.height()), app)
+    context.setContextProperty("windowSize", window_memory)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
+    if engine.rootObjects():
+        window_memory.attach(engine.rootObjects()[0])
+        app.aboutToQuit.connect(window_memory.save)
     return engine, player
 
 
