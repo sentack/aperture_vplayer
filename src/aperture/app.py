@@ -156,8 +156,14 @@ def load_ui(app, data_dir: Path, on_warnings=None, settings=None):
     online = OnlineSearch(player, lyrics, player.tracks, settings, data_dir, app)
     online.noticed.connect(player.noticed)
     context.setContextProperty("online", online)
-    playlists = PlaylistLibrary(player, PlaylistHistory(data_dir / "playlists.json"), parent=app)
+    playlists = PlaylistLibrary(
+        player,
+        PlaylistHistory(data_dir / "playlists.json"),
+        parent=app,
+        autosave=lambda: settings.autosave_playlist,
+    )
     playlists.noticed.connect(player.noticed)
+    prefs.changed.connect(playlists.refresh)  # autosave turned on saves what's waiting
     playlists.saved.connect(lambda _: defaults.register_playlists())
     context.setContextProperty("playlists", playlists)
 

@@ -39,6 +39,8 @@ DEFAULTS: dict[str, object] = {
     "single_window": True,
     "repeat": "off",  # playlist repeat: off, all, one
     "shuffle": False,
+    # Changes to a playlist opened from a file are written back to it as they happen.
+    "autosave_playlist": False,
     "opensubtitles_key": "",  # the user's own API key, needed for subtitle search
     # The main window's last normal size ([] until it has one) and whether it was maximized.
     "window_size": [],
@@ -85,7 +87,10 @@ def _valid(key: str, value: object) -> bool:
                 value == []
                 or (len(value) == 2 and all(_whole(v) and 0 < v <= 100_000 for v in value))
             )
-        case "hardware_decoding" | "single_window" | "shuffle" | "window_maximized":
+        case (
+            "hardware_decoding" | "single_window" | "shuffle" | "window_maximized"
+            | "autosave_playlist"
+        ):
             return isinstance(value, bool)
         case "repeat":
             return value in REPEAT_MODES
@@ -125,6 +130,7 @@ class Settings:
     single_window = _field("single_window")
     repeat = _field("repeat")
     shuffle = _field("shuffle")
+    autosave_playlist = _field("autosave_playlist")
     opensubtitles_key = _field("opensubtitles_key")
     window_size = _field("window_size")
     window_maximized = _field("window_maximized")

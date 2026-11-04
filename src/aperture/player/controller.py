@@ -92,6 +92,8 @@ class PlayerController(QObject):
     durationsChanged = Signal()  # lengths of playlist items became known
     # A playlist of two or more items is being replaced, cleared or closed: its items.
     playlistRetired = Signal(list)
+    # The playlist is about to be replaced or cleared (its file, if any, no longer applies).
+    playlistReplaced = Signal()
     # A playlist file was opened: its path and the items it contained.
     playlistFileOpened = Signal(str, list)
 
@@ -689,6 +691,7 @@ class PlayerController(QObject):
         """Hand a playlist worth remembering to the playlist history before it goes."""
         if len(self._playlist) >= 2:
             self.playlistRetired.emit([str(item) for item in self._playlist.items])
+        self.playlistReplaced.emit()
 
     def _on_duration(self, duration_ms: int) -> None:
         if self._loaded is not None and duration_ms > 0:

@@ -7,6 +7,7 @@ from aperture.core.launch import NEW_WINDOW_FLAG, split_new_window
 from aperture.core.playlist_file import (
     format_playlist,
     is_playlist,
+    keep_missing,
     parse_playlist,
     read_playlist,
     write_playlist,
@@ -122,3 +123,12 @@ def test_restart_and_new_windows_start_the_appimage_file(monkeypatch):
     monkeypatch.delenv("APPIMAGE")
     program, arguments = restart_command()
     assert arguments == ["-m", "aperture"]  # from source in tests
+
+
+def test_writing_back_keeps_entries_that_did_not_open():
+    a, gone, b, c, later = (Path(f"/v/{n}.mkv") for n in ("a", "gone", "b", "c", "later"))
+    entries = [gone, a, b, later]  # as listed in the file; gone and later didn't open
+    assert keep_missing(entries, [a, b], [a, b, c]) == [gone, a, b, later, c]
+    assert keep_missing(entries, [a, b], [b]) == [gone, b, later]  # a removed by the user
+    assert keep_missing(entries, [a, b], [a]) == [gone, a, later]  # b removed: after a
+    assert keep_missing(entries, [a, b], [c]) == [gone, later, c]  # both removed

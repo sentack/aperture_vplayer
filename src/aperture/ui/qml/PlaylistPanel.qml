@@ -67,7 +67,7 @@ Rectangle {
 
             IconButton {
                 glyph: Icons.save
-                label: "Save playlist"
+                label: playlists.fileName ? "Save playlist as" : "Save playlist"
                 enabled: player.playlist.length > 0
                 onClicked: panel.saveRequested()
             }
@@ -94,9 +94,54 @@ Rectangle {
         color: theme.divider
     }
 
+    // The playlist file this queue came from: its name, and Save once files were added or
+    // removed (or a note that autosave takes care of it).
+    Item {
+        id: fileBar
+        anchors { left: parent.left; right: parent.right; top: header.bottom; topMargin: 1 }
+        height: visible ? 44 : 0
+        visible: !panel.showHistory && playlists.fileName !== ""
+
+        UiText {
+            anchors { left: parent.left; leftMargin: 20; right: fileStatus.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+            text: playlists.fileName
+            font.pixelSize: 12
+            font.weight: Font.DemiBold
+            color: theme.text_secondary
+        }
+
+        Item {
+            id: fileStatus
+            anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+            width: saveChanges.visible ? saveChanges.width : savedNote.implicitWidth
+            height: 28
+
+            UiText {
+                id: savedNote
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                visible: !saveChanges.visible
+                text: playlists.unsaved ? "Saving…" : prefs.autosavePlaylist ? "Saves automatically" : "Saved"
+                font.pixelSize: 11
+                color: theme.text_tertiary
+                elide: Text.ElideNone
+            }
+
+            PillButton {
+                id: saveChanges
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                visible: playlists.unsaved && !prefs.autosavePlaylist
+                implicitHeight: 28
+                text: "Save"
+                primary: true
+                Accessible.name: `Save changes to ${playlists.fileName}`
+                onClicked: playlists.saveChanges()
+            }
+        }
+    }
+
     ListView {
         id: list
-        anchors { left: parent.left; right: parent.right; top: header.bottom; bottom: parent.bottom; margins: 8 }
+        anchors { left: parent.left; right: parent.right; top: fileBar.visible ? fileBar.bottom : header.bottom; bottom: parent.bottom; margins: 8 }
         visible: !panel.showHistory
         clip: true
         spacing: 2

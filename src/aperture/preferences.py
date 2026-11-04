@@ -133,6 +133,16 @@ class PreferencesController(QObject):
 
     singleWindow = Property(bool, _get_single_window, _set_single_window, notify=changed)
 
+    def _get_autosave(self) -> bool:
+        return self._settings.autosave_playlist
+
+    def _set_autosave(self, value: bool) -> None:
+        if bool(value) != self._settings.autosave_playlist:
+            self._settings.autosave_playlist = bool(value)
+            self._commit()
+
+    autosavePlaylist = Property(bool, _get_autosave, _set_autosave, notify=changed)
+
     def _get_subtitle_key(self) -> str:
         return self._settings.opensubtitles_key
 

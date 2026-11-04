@@ -655,3 +655,43 @@ def test_window_reopens_at_the_size_it_was_left(app, tmp_path):
     finally:
         close(engine, window)
 
+
+def test_changes_to_a_playlist_file_are_saved_back(ui, app, tmp_path):
+    from PySide6.QtCore import QEventLoop, QTimer
+
+    from aperture.core.playlist_file import read_playlist
+    from aperture.player.playlists import AUTOSAVE_DELAY_MS
+
+    engine, player, warnings = ui
+    playlists = engine.rootContext().contextProperty("playlists")
+    prefs = engine.rootContext().contextProperty("prefs")
+    a, b, c = (tmp_path / f"{n}.mkv" for n in "abc")
+    for f in (a, b, c):
+        f.write_bytes(b"")
+    unplugged = tmp_path / "usb" / "x.mkv"  # listed, but not there right now
+    saved = tmp_path / "Mine.aplaylist"
+    saved.write_text(f"#EXTM3U\na.mkv\n{unplugged}\nb.mkv\n")
+    player.open_paths([saved])
+    assert playlists.property("fileName") == "Mine.aplaylist"
+    assert not playlists.property("unsaved")
+
+    player.add_paths([c])
+    assert playlists.property("unsaved")  # the Save button shows
+    assert playlists.saveChanges()
+    assert read_playlist(saved) == [a, unplugged, b, c]  # the missing one is kept
+    assert not playlists.property("unsaved")
+
+    prefs.setProperty("autosavePlaylist", True)
+    player.removeIndex(0)  # a.mkv
+    loop = QEventLoop()
+    QTimer.singleShot(AUTOSAVE_DELAY_MS + 300, loop.quit)
+    loop.exec()
+    assert read_playlist(saved) == [unplugged, b, c]
+    assert not playlists.property("unsaved")
+
+    player.add_paths([a])  # a change still waiting is written before the playlist goes
+    player.clearPlaylist()
+    assert read_playlist(saved) == [unplugged, b, c, a]
+    assert playlists.property("fileName") == ""
+    prefs.setProperty("autosavePlaylist", False)
+    assert messages(warnings) == []
