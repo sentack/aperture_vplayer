@@ -36,12 +36,21 @@ def test_boost_turned_on_while_playing_still_gets_the_audio(app, tmp_path):
         if not wait(app, lambda: player.position > 300, seconds=10):
             pytest.skip("this machine cannot play audio")
         buffers = []
+        unavailable = []
         player.boost._capture.audioBufferReceived.connect(buffers.append)
+        player.boost.unavailable.connect(unavailable.append)
         player.audioBoost = 1.5
-        # The decoded audio must keep coming to the boost. Detaching the normal output
-        # before attaching the boost's left the player with no audio at all: silence.
-        assert wait(app, lambda: len(buffers) >= 5, seconds=5)
-        player.audioBoost = 1.0
-        assert player.audioBoost == 1.0
+        # The decoded audio must reach the boost. Detaching the normal output before
+        # attaching the boost's left the player with no audio at all: silence.
+        assert wait(app, lambda: len(buffers) >= 5 or unavailable, seconds=5)
+        assert buffers
+        if unavailable:
+            # No sound device (CI): boost gives up on the first buffer and normal playback
+            # carries on, as it should.
+            assert player.audioBoost == 1.0
+        else:
+            assert player.audioBoost == 1.5
+            player.audioBoost = 1.0
+            assert player.audioBoost == 1.0
     finally:
         player.shutdown()
