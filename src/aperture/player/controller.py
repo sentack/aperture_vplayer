@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QStandardPaths, QTimer, QUrl, Signal, Slot
-from PySide6.QtMultimedia import QAudioOutput, QMediaMetaData, QMediaPlayer
+from PySide6.QtMultimedia import QAudioOutput, QMediaDevices, QMediaMetaData, QMediaPlayer
 
 from aperture.core import (
     RATES,
@@ -123,6 +123,10 @@ class PlayerController(QObject):
         self._audio = QAudioOutput(self)
         self._player = QMediaPlayer(self)
         self._player.setAudioOutput(self._audio)
+        # Qt picks the output device once, at start. Follow the system's default output as it
+        # changes (headphones plugged in, Bluetooth connected or gone), as other apps do.
+        self._devices = QMediaDevices(self)
+        self._devices.audioOutputsChanged.connect(self._follow_default_output)
         self.tracks = TrackSelector(self._player, self)
         self.tracks.noticed.connect(self.noticed)
         self.durations = DurationProbe(self)
@@ -686,6 +690,13 @@ class PlayerController(QObject):
         self.durations.stop()
 
     # --- internals ---------------------------------------------------------
+
+    def _follow_default_output(self) -> None:
+        default = QMediaDevices.defaultAudioOutput()
+        if default.isNull() or default == self._audio.device():
+            return
+        log.info("audio output: %s", default.description())
+        self._audio.setDevice(default)
 
     def _retire(self) -> None:
         """Hand a playlist worth remembering to the playlist history before it goes."""

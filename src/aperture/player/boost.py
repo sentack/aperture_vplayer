@@ -16,7 +16,6 @@ from PySide6.QtMultimedia import (
     QAudioFormat,
     QAudioOutput,
     QAudioSink,
-    QMediaDevices,
     QMediaPlayer,
 )
 
@@ -81,6 +80,7 @@ class AudioBoost(QObject):
         self._backlog = bytearray()
         output.volumeChanged.connect(self._sync_volume)
         output.mutedChanged.connect(self._sync_volume)
+        output.deviceChanged.connect(self._follow_device)
 
     @property
     def gain(self) -> float:
@@ -121,7 +121,7 @@ class AudioBoost(QObject):
         if self._sink is not None:
             self._sink.stop()
             self._sink.deleteLater()
-        self._sink = QAudioSink(QMediaDevices.defaultAudioOutput(), fmt, self)
+        self._sink = QAudioSink(self._output.device(), fmt, self)
         self._device = self._sink.start()
         self._format = fmt
         self._backlog.clear()
@@ -132,6 +132,14 @@ class AudioBoost(QObject):
             self.set_gain(1.0)
             return False
         return True
+
+    def _follow_device(self) -> None:
+        """The output moved to another device: so does the boosted sound, from its next buffer."""
+        if self._sink is not None:
+            self._sink.stop()
+            self._sink.deleteLater()
+        self._sink, self._device, self._format = None, None, None
+        self._backlog.clear()
 
     def _on_buffer(self, buffer) -> None:
         fmt = buffer.format()
